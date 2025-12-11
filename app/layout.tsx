@@ -3,7 +3,7 @@ import "./globals.css";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Threadline - Standards that teach themselves",
+  title: "Threadline",
   description: "AI-powered code quality and convention tool with focused, parallel code reviews. Standards that teach themselves.",
 };
 

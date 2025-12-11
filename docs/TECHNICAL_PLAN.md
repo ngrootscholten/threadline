@@ -26,14 +26,14 @@
 │                    │                                              │
 └────────────────────┼────────────────────────────────────────────┘
                      │
-                     │ HTTP POST /api/review
+                     │ HTTP POST /api/threadline-check
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Threadline Review Server                      │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │              API Endpoint (/api/review)                   │  │
+│  │              API Endpoint (/api/threadline-check)         │  │
 │  │  - Receives: experts[], diffs[], files[]                 │  │
 │  │  - Validates request                                      │  │
 │  └──────────────────┬───────────────────────────────────────┘  │
@@ -51,8 +51,8 @@
 │          │              │              │                        │
 │          ▼              ▼              ▼                         │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │              LLM API (OpenAI/Anthropic)                  │  │
-│  │  - GPT-4o-mini (cost-effective)                          │  │
+│  │              LLM API (OpenAI/Anthropic/etc)              │  │
+│  │  - LLM model (configurable)                              │  │
 │  │  - User's API key (BYO)                                   │  │
 │  └──────────────────┬───────────────────────────────────────┘  │
 │                     │                                            │
@@ -96,7 +96,7 @@ threadline/
 │       ├── src/
 │       │   ├── api/
 │       │   │   └── routes/
-│       │   │       └── review.ts    # POST /api/review
+│       │   │       └── threadline-check.ts    # POST /api/threadline-check
 │       │   ├── processors/
 │       │   │   └── expert.ts       # Parallel expert processing
 │       │   ├── llm/
@@ -148,7 +148,7 @@ export async function checkCommand(options: CheckOptions) {
   const changedFiles = await getChangedFiles();
   
   // 3. Call review API
-  const results = await reviewAPI.post('/api/review', {
+  const results = await reviewAPI.post('/api/threadline-check', {
     experts: experts.map(e => ({ name: e.name, content: e.content })),
     diff: diff,
     files: changedFiles,
@@ -185,8 +185,8 @@ export async function checkCommand(options: CheckOptions) {
 **Implementation Details**:
 
 ```typescript
-// src/api/routes/review.ts
-POST /api/review
+// src/api/routes/threadline-check.ts
+POST /api/threadline-check
 Body: {
   experts: Array<{ name: string, content: string }>,
   diff: string,
