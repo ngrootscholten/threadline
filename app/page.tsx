@@ -12,7 +12,7 @@ export default function Home() {
               Code standards that teach themselves
             </h1>
             <p className="text-xl md:text-2xl text-slate-300 mb-12 leading-relaxed">
-              AI-powered code checks with focused threadlines, parallel execution, and full auditability.
+              AI-powered code checks with parallel execution, and full auditability.
               Define your rules or principles - your choice. Your codebase, your control.
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
