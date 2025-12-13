@@ -2,13 +2,13 @@
 
 **Code standards that teach themselves.**
 
-An AI-powered linter based on your natural language documentation. Threadline runs focused, parallel code reviews that flag issues based on your team's documented standards—without fixing them.
+An AI-powered linter based on your natural language documentation. Threadline runs focused, parallel code checks that flag issues based on your team's documented standards—without fixing them.
 
 ## What It Does
 
 Threadline helps teams maintain consistent code quality by:
 
-- **Documentation that lives with your code** - Standards live in an `/experts` folder, version-controlled alongside your codebase
+- **Documentation that lives with your code** - Standards live in a `/threadlines` folder, version-controlled alongside your codebase
 - **Focused AI experts** - Each expert checks one specific concern, running in parallel
 - **Fully auditable** - Every check is logged and traceable
 - **Zero configuration** - Works out of the box, just add your experts and run
@@ -20,15 +20,15 @@ Threadline helps teams maintain consistent code quality by:
    npx threadline check
    ```
 
-2. **Add your experts**
-   Create an `/experts` folder in your repository and add markdown files defining your coding standards.
+2. **Add your threadlines**
+   Create a `/threadlines` folder in your repository and add markdown files defining your coding standards.
 
 3. **See it in action**
-   Make a change, run the check, and see which experts flag issues.
+   Make a change, run the check, and see which threadlines flag issues.
 
 ## How It Works
 
-1. Define your experts as markdown files in `/experts`
+1. Define your threadlines as markdown files in `/threadlines`
 2. Run `npx threadline check` when reviewing changes
 3. Threadline validates experts, collects git diffs, and runs parallel AI reviews
 4. Get focused feedback—only experts that need attention are shown

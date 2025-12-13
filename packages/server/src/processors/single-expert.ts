@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { ExpertResult } from '../types/result';
 import { buildPrompt } from '../llm/prompt-builder';
 
-export interface ExpertInput {
+export interface ThreadlineInput {
   id: string;
   version: string;
   patterns: string[];
@@ -11,30 +11,30 @@ export interface ExpertInput {
   contextContent?: Record<string, string>;
 }
 
-export async function processExpert(
-  expert: ExpertInput,
+export async function processThreadline(
+  threadline: ThreadlineInput,
   diff: string,
   files: string[],
   apiKey: string
 ): Promise<ExpertResult> {
   const openai = new OpenAI({ apiKey });
 
-  // Filter files that match expert patterns
+  // Filter files that match threadline patterns
   const matchingFiles = files.filter(file => 
-    expert.patterns.some(pattern => matchesPattern(file, pattern))
+    threadline.patterns.some(pattern => matchesPattern(file, pattern))
   );
 
   // If no files match, return not_relevant
   if (matchingFiles.length === 0) {
     return {
-      expertId: expert.id,
+      expertId: threadline.id,
       status: 'not_relevant',
-      reasoning: 'No files match expert patterns'
+      reasoning: 'No files match threadline patterns'
     };
   }
 
   // Build prompt
-  const prompt = buildPrompt(expert, diff, matchingFiles);
+  const prompt = buildPrompt(threadline, diff, matchingFiles);
 
   try {
     const response = await openai.chat.completions.create({
@@ -42,7 +42,7 @@ export async function processExpert(
       messages: [
         {
           role: 'system',
-          content: 'You are a code reviewer. Return only valid JSON, no other text.'
+          content: 'You are a code quality checker. Return only valid JSON, no other text.'
         },
         {
           role: 'user',
@@ -72,7 +72,7 @@ export async function processExpert(
     }
 
     return {
-      expertId: expert.id,
+      expertId: threadline.id,
       status: parsed.status || 'not_relevant',
       reasoning: parsed.reasoning,
       lineReferences: parsed.line_references,
@@ -80,7 +80,7 @@ export async function processExpert(
     };
   } catch (error: any) {
     return {
-      expertId: expert.id,
+      expertId: threadline.id,
       status: 'not_relevant',
       reasoning: `Error processing expert: ${error.message}`
     };

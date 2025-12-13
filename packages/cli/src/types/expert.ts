@@ -1,4 +1,4 @@
-export interface Expert {
+export interface Threadline {
   id: string;
   version: string;
   patterns: string[];
@@ -7,9 +7,9 @@ export interface Expert {
   filePath: string;
 }
 
-export interface ExpertValidationResult {
+export interface ThreadlineValidationResult {
   valid: boolean;
-  expert?: Expert;
+  threadline?: Threadline;
   errors?: string[];
 }
 

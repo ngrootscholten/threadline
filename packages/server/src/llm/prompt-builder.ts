@@ -1,17 +1,17 @@
-import { ExpertInput } from '../processors/single-expert';
+import { ThreadlineInput } from '../processors/single-expert';
 
 export function buildPrompt(
-  expert: ExpertInput,
+  threadline: ThreadlineInput,
   diff: string,
   matchingFiles: string[]
 ): string {
-  let prompt = `You are an expert code reviewer focused on: ${expert.id}\n\n`;
-  prompt += `Expert Guidelines:\n${expert.content}\n\n`;
+  let prompt = `You are a code quality checker focused on: ${threadline.id}\n\n`;
+  prompt += `Threadline Guidelines:\n${threadline.content}\n\n`;
 
   // Add context files if available
-  if (expert.contextContent && Object.keys(expert.contextContent).length > 0) {
+  if (threadline.contextContent && Object.keys(threadline.contextContent).length > 0) {
     prompt += `Context Files:\n`;
-    for (const [file, content] of Object.entries(expert.contextContent)) {
+    for (const [file, content] of Object.entries(threadline.contextContent)) {
       prompt += `\n--- ${file} ---\n${content}\n`;
     }
     prompt += `\n`;
@@ -20,7 +20,7 @@ export function buildPrompt(
   prompt += `Code Changes:\n${diff}\n\n`;
   prompt += `Changed Files:\n${matchingFiles.join('\n')}\n\n`;
 
-  prompt += `Review the code changes against the expert guidelines above.\n`;
+  prompt += `Review the code changes against the threadline guidelines above.\n`;
   prompt += `Return JSON only with this exact structure:\n`;
   prompt += `{\n`;
   prompt += `  "status": "compliant" | "attention" | "not_relevant",\n`;

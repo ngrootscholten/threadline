@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Threadline",
-  description: "AI-powered code quality and convention tool with focused, parallel code reviews. Standards that teach themselves.",
+  description: "AI-powered code quality and convention tool with focused, parallel code checks. Standards that teach themselves.",
 };
 
 export default function RootLayout({

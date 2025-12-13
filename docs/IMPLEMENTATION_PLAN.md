@@ -12,7 +12,7 @@ Before we start building, we need to decide:
 **Recommendation**: Start with monorepo for easier development, can split later if needed.
 
 ### 2. Expert Markdown Format
-**Question**: What's the minimum required structure for expert files?
+**Question**: What's the minimum required structure for threadline files?
 - **Option A**: Free-form markdown (just text, AI interprets)
 - **Option B**: Structured format (title, description, rules sections)
 - **Option C**: YAML frontmatter + markdown body
@@ -107,19 +107,19 @@ packages/cli/
 ### Task 1.3: Expert File Discovery & Validation
 **Estimated Time**: 8 hours
 
-- [ ] Find `/experts` folder in current directory
-- [ ] Read all `.md` files from `/experts`
+- [ ] Find `/threadlines` folder in current directory
+- [ ] Read all `.md` files from `/threadlines`
 - [ ] Basic validation:
   - File exists and is readable
   - Is valid markdown (basic check)
   - Has content (not empty)
 - [ ] Parse expert name from filename
 - [ ] Return structured expert objects: `{ name: string, content: string }`
-- [ ] Handle errors gracefully (no experts folder, empty folder, etc.)
+- [ ] Handle errors gracefully (no threadlines folder, empty folder, etc.)
 
 **Dependencies**: Task 1.2
 
-**Deliverable**: CLI can discover and validate expert files
+**Deliverable**: CLI can discover and validate threadline files
 
 **Files to Create**:
 ```
@@ -131,9 +131,9 @@ packages/cli/src/
 ```
 
 **Test Cases**:
-- ✅ Finds experts in `/experts` folder
-- ✅ Handles missing `/experts` folder gracefully
-- ✅ Handles empty `/experts` folder
+- ✅ Finds threadlines in `/threadlines` folder
+- ✅ Handles missing `/threadlines` folder gracefully
+- ✅ Handles empty `/threadlines` folder
 - ✅ Validates markdown files
 - ✅ Extracts expert names from filenames
 
@@ -260,7 +260,7 @@ packages/server/src/
 
 **Prompt Template**:
 ```
-You are an expert code reviewer focused on: {expert_name}
+You are a code quality checker focused on: {expert_name}
 
 Expert Guidelines:
 {expert_content}
@@ -353,8 +353,8 @@ packages/cli/src/
 ### Task 1.10: End-to-End Testing
 **Estimated Time**: 4 hours
 
-- [ ] Create test repository with `/experts` folder
-- [ ] Create sample expert files
+- [ ] Create test repository with `/threadlines` folder
+- [ ] Create sample threadline files
 - [ ] Make code changes
 - [ ] Run `npx threadline check`
 - [ ] Verify end-to-end flow works

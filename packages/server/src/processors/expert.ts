@@ -1,8 +1,8 @@
 import { processExpert } from './single-expert';
 import { ExpertResult } from '../types/result';
 
-export interface ProcessExpertsRequest {
-  experts: Array<{
+export interface ProcessThreadlinesRequest {
+  threadlines: Array<{
     id: string;
     version: string;
     patterns: string[];
@@ -15,10 +15,10 @@ export interface ProcessExpertsRequest {
   apiKey: string;
 }
 
-export interface ProcessExpertsResponse {
+export interface ProcessThreadlinesResponse {
   results: ExpertResult[];
   metadata: {
-    totalExperts: number;
+    totalThreadlines: number;
     completed: number;
     timedOut: number;
     errors: number;
@@ -27,17 +27,17 @@ export interface ProcessExpertsResponse {
 
 const EXPERT_TIMEOUT = 40000; // 40 seconds
 
-export async function processExperts(request: ProcessExpertsRequest): Promise<ProcessExpertsResponse> {
-  const { experts, diff, files, apiKey } = request;
+export async function processThreadlines(request: ProcessThreadlinesRequest): Promise<ProcessThreadlinesResponse> {
+  const { threadlines, diff, files, apiKey } = request;
   
   // Create promises with timeout
-  const promises = experts.map(expert => 
+  const promises = threadlines.map(threadline => 
     Promise.race([
-      processExpert(expert, diff, files, apiKey),
+      processThreadline(threadline, diff, files, apiKey),
       new Promise<ExpertResult>((resolve) => 
         setTimeout(() => {
           resolve({
-            expertId: expert.id,
+            expertId: threadline.id,
             status: 'not_relevant',
             reasoning: 'Request timed out after 40s'
           });
@@ -57,7 +57,7 @@ export async function processExperts(request: ProcessExpertsRequest): Promise<Pr
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
-    const expert = experts[i];
+    const threadline = threadlines[i];
 
     if (result.status === 'fulfilled') {
       const expertResult = result.value;
@@ -71,7 +71,7 @@ export async function processExperts(request: ProcessExpertsRequest): Promise<Pr
     } else {
       errors++;
       expertResults.push({
-        expertId: expert.id,
+        expertId: threadline.id,
         status: 'not_relevant',
         reasoning: `Error: ${result.reason?.message || 'Unknown error'}`
       });
@@ -84,7 +84,7 @@ export async function processExperts(request: ProcessExpertsRequest): Promise<Pr
   return {
     results: filteredResults,
     metadata: {
-      totalExperts: experts.length,
+      totalThreadlines: threadlines.length,
       completed,
       timedOut,
       errors

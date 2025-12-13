@@ -1,42 +1,42 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { Expert, ExpertValidationResult } from '../types/expert';
+import { Threadline, ThreadlineValidationResult } from '../types/expert';
 
 const REQUIRED_FIELDS = ['id', 'version', 'patterns'];
 
-export async function findExperts(repoRoot: string): Promise<Expert[]> {
-  const expertsDir = path.join(repoRoot, 'experts');
+export async function findThreadlines(repoRoot: string): Promise<Threadline[]> {
+  const expertsDir = path.join(repoRoot, 'threadlines');
   
   if (!fs.existsSync(expertsDir)) {
-    throw new Error('No /experts folder found. Create an /experts folder with your expert markdown files.');
+    throw new Error('No /threadlines folder found. Create a /threadlines folder with your threadline markdown files.');
   }
 
   const files = fs.readdirSync(expertsDir);
   const expertFiles = files.filter(f => f.endsWith('.md'));
 
   if (expertFiles.length === 0) {
-    throw new Error('No expert files found in /experts folder. Add .md files with expert definitions.');
+    throw new Error('No threadline files found in /threadlines folder. Add .md files with threadline definitions.');
   }
 
-  const experts: Expert[] = [];
+  const threadlines: Threadline[] = [];
 
   for (const file of expertFiles) {
-    const result = await validateExpert(path.join(expertsDir, file), repoRoot);
-    if (result.valid && result.expert) {
-      experts.push(result.expert);
+    const result = await validateThreadline(path.join(expertsDir, file), repoRoot);
+    if (result.valid && result.threadline) {
+      threadlines.push(result.threadline);
     } else {
       console.warn(`⚠️  Skipping ${file}: ${result.errors?.join(', ')}`);
     }
   }
 
-  return experts;
+  return threadlines;
 }
 
-export async function validateExpert(
+export async function validateThreadline(
   filePath: string,
   repoRoot: string
-): Promise<ExpertValidationResult> {
+): Promise<ThreadlineValidationResult> {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
     
@@ -46,7 +46,7 @@ export async function validateExpert(
     if (!frontmatterMatch) {
       return {
         valid: false,
-        errors: ['Missing YAML frontmatter. Expert files must start with ---']
+        errors: ['Missing YAML frontmatter. Threadline files must start with ---']
       };
     }
 
@@ -88,7 +88,7 @@ export async function validateExpert(
 
     // Validate body has content
     if (!body || body.length === 0) {
-      errors.push('Expert body cannot be empty');
+      errors.push('Threadline body cannot be empty');
     }
 
     // Validate version format (basic semver check)
@@ -100,7 +100,7 @@ export async function validateExpert(
       return { valid: false, errors };
     }
 
-    const expert: Expert = {
+    const threadline: Threadline = {
       id: frontmatter.id,
       version: frontmatter.version,
       patterns: frontmatter.patterns,
@@ -109,11 +109,11 @@ export async function validateExpert(
       filePath: path.relative(repoRoot, filePath)
     };
 
-    return { valid: true, expert };
+    return { valid: true, threadline };
   } catch (error: any) {
     return {
       valid: false,
-      errors: [`Failed to parse expert file: ${error.message}`]
+      errors: [`Failed to parse threadline file: ${error.message}`]
     };
   }
 }

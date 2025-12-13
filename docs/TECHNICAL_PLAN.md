@@ -7,10 +7,10 @@
 │                         Developer Machine                        │
 │                                                                   │
 │  ┌──────────────┐         ┌──────────────┐                     │
-│  │   Git Repo   │         │   /experts   │                     │
+│  │   Git Repo   │         │  /threadlines│                     │
 │  │              │         │   folder     │                     │
-│  │  - code/     │         │  - expert1.md│                     │
-│  │  - experts/  │         │  - expert2.md│                     │
+│  │  - code/     │         │  - threadline1.md│                  │
+│  │  - threadlines│        │  - threadline2.md│                  │
 │  └──────┬───────┘         └──────┬───────┘                     │
 │         │                         │                              │
 │         └──────────┬──────────────┘                              │
@@ -19,7 +19,7 @@
 │         ┌──────────────────────┐                                 │
 │         │  npx threadline CLI  │                                 │
 │         │                      │                                 │
-│         │  - Validates experts │                                 │
+│         │  - Validates threadlines │                             │
 │         │  - Collects git diffs│                                 │
 │         │  - Calls review API  │                                 │
 │         └──────────┬───────────┘                                 │
@@ -34,17 +34,17 @@
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │              API Endpoint (/api/threadline-check)         │  │
-│  │  - Receives: experts[], diffs[], files[]                 │  │
+│  │  - Receives: threadlines[], diffs[], files[]             │  │
 │  │  - Validates request                                      │  │
 │  └──────────────────┬───────────────────────────────────────┘  │
 │                     │                                            │
 │                     ▼                                            │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │         Parallel Expert Processor                         │  │
+│  │         Parallel Threadline Processor                    │  │
 │  │                                                           │  │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐              │  │
-│  │  │ Expert 1 │  │ Expert 2 │  │ Expert N │  ...         │  │
-│  │  │  Worker  │  │  Worker  │  │  Worker  │              │  │
+│  │  │Threadline│  │Threadline│  │Threadline│  ...         │  │
+│  │  │    1     │  │    2     │  │    N     │              │  │
 │  │  └────┬─────┘  └────┬─────┘  └────┬─────┘              │  │
 │  │       │              │              │                     │  │
 │  └───────┼──────────────┼──────────────┼─────────────────────┘  │
@@ -66,7 +66,7 @@
 │                     ▼                                            │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │         Audit Logger (optional)                         │  │
-│  │  - Logs: repo, experts checked, timestamps               │  │
+│  │  - Logs: repo, threadlines checked, timestamps          │  │
 │  │  - Does NOT log: code content, API responses            │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
@@ -82,7 +82,7 @@ threadline/
 │   │   │   ├── commands/
 │   │   │   │   └── check.ts   # Main check command
 │   │   │   ├── validators/
-│   │   │   │   └── experts.ts # Validates expert markdown files
+│   │   │   │   └── experts.ts # Validates threadline markdown files
 │   │   │   ├── git/
 │   │   │   │   └── diff.ts    # Collects git diffs
 │   │   │   └── api/
@@ -98,7 +98,7 @@ threadline/
 │       │   │   └── routes/
 │       │   │       └── threadline-check.ts    # POST /api/threadline-check
 │       │   ├── processors/
-│       │   │   └── expert.ts       # Parallel expert processing
+│       │   │   └── expert.ts       # Parallel threadline processing
 │       │   ├── llm/
 │       │   │   └── client.ts        # LLM API wrapper
 │       │   ├── audit/
@@ -116,7 +116,7 @@ threadline/
 │
 ├── examples/
 │   └── sample-repo/
-│       └── experts/
+│       └── threadlines/
 │           ├── error-handling.md
 │           └── api-design.md
 │
@@ -140,8 +140,8 @@ threadline/
 ```typescript
 // src/commands/check.ts
 export async function checkCommand(options: CheckOptions) {
-  // 1. Find and validate experts
-  const experts = await validateExperts('./experts');
+  // 1. Find and validate threadlines
+  const threadlines = await findThreadlines('./threadlines');
   
   // 2. Get git diff
   const diff = await getGitDiff();
@@ -149,7 +149,7 @@ export async function checkCommand(options: CheckOptions) {
   
   // 3. Call review API
   const results = await reviewAPI.post('/api/threadline-check', {
-    experts: experts.map(e => ({ name: e.name, content: e.content })),
+    threadlines: threadlines.map(t => ({ name: t.name, content: t.content })),
     diff: diff,
     files: changedFiles,
     apiKey: process.env.OPENAI_API_KEY // User's key
@@ -188,7 +188,7 @@ export async function checkCommand(options: CheckOptions) {
 // src/api/routes/threadline-check.ts
 POST /api/threadline-check
 Body: {
-  experts: Array<{ name: string, content: string }>,
+  threadlines: Array<{ name: string, content: string }>,
   diff: string,
   files: string[],
   apiKey: string  // User's OpenAI key
@@ -208,26 +208,26 @@ Response: {
 
 ```typescript
 // src/processors/expert.ts
-export async function processExperts(
-  experts: Expert[],
+export async function processThreadlines(
+  threadlines: Threadline[],
   diff: string,
   files: string[],
   apiKey: string
 ): Promise<ExpertResult[]> {
-  const promises = experts.map(expert => 
-    processExpert(expert, diff, files, apiKey)
+  const promises = threadlines.map(threadline => 
+    processThreadline(threadline, diff, files, apiKey)
   );
   
   return Promise.all(promises);
 }
 
-async function processExpert(
-  expert: Expert,
+async function processThreadline(
+  threadline: Threadline,
   diff: string,
   files: string[],
   apiKey: string
 ): Promise<ExpertResult> {
-  const prompt = buildPrompt(expert.content, diff, files);
+  const prompt = buildPrompt(threadline.content, diff, files);
   const response = await callLLM(prompt, apiKey);
   return parseResponse(response);
 }
@@ -236,10 +236,10 @@ async function processExpert(
 **LLM Prompt Structure**:
 
 ```
-You are an expert code reviewer focused on: {expert_name}
+You are a code quality checker focused on: {threadline_name}
 
-Expert Guidelines:
-{expert_content}
+Threadline Guidelines:
+{threadline_content}
 
 Code Changes:
 {diff}
@@ -247,7 +247,7 @@ Code Changes:
 Changed Files:
 {files}
 
-Review the code changes against the expert guidelines above.
+Review the code changes against the threadline guidelines above.
 Return JSON only:
 {
   "status": "compliant" | "attention" | "not_relevant",
@@ -307,7 +307,7 @@ npm run dev
 ```
 1. Developer runs: npx threadline check
    │
-   ├─> CLI validates /experts folder
+   ├─> CLI validates /threadlines folder
    │   └─> Checks markdown syntax, required fields
    │
    ├─> CLI collects git diff
@@ -318,7 +318,7 @@ npm run dev
    │
    └─> CLI POSTs to review server
        │
-       ├─> experts: [{name, content}]
+       ├─> threadlines: [{name, content}]
        ├─> diff: string
        ├─> files: string[]
        └─> apiKey: string (from env)
@@ -327,7 +327,7 @@ npm run dev
    │
    ├─> Validates request structure
    │
-   ├─> Creates parallel workers (one per expert)
+   ├─> Creates parallel workers (one per threadline)
    │   │
    │   └─> Each worker:
    │       ├─> Builds LLM prompt
@@ -338,15 +338,15 @@ npm run dev
    │   └─> Filters out "not_relevant"
    │
    ├─> Optional: Logs audit metadata
-   │   └─> {repo, experts_checked, timestamp, line_numbers, user_id, issues}
+   │   └─> {repo, threadlines_checked, timestamp, line_numbers, user_id, issues}
    │
    └─> Returns filtered results
        
 3. CLI receives results
    │
    └─> Displays formatted output
-       ├─> ⚠️ Expert Name: Issues found
-       └─> ✅ Expert Name: Compliant
+       ├─> ⚠️ Threadline Name: Issues found
+       └─> ✅ Threadline Name: Compliant
 ```
 
 ## Security Considerations
@@ -360,7 +360,7 @@ npm run dev
 ### Audit Logging (Optional)
 **What we log**:
 - Repository identifier (hash or name)
-- Expert names checked
+- Threadline names checked
 - Timestamp
 - Status (compliant/attention/not_relevant)
 - Line numbers where issues were found
@@ -394,7 +394,7 @@ npm run dev
 - [ ] Improved CLI output formatting
 
 ### Phase 3: Polish
-- [ ] Expert validation with helpful errors
+- [ ] Threadline validation with helpful errors
 - [ ] Configuration file support
 - [ ] Audit logging (optional)
 - [ ] Better error messages
@@ -431,7 +431,7 @@ npm run dev
 ## Testing Strategy
 
 ### Unit Tests
-- Expert validation logic
+- Threadline validation logic
 - Git diff parsing
 - LLM response parsing
 - Result aggregation
@@ -442,13 +442,13 @@ npm run dev
 - End-to-end: check command → results
 
 ### Manual Testing
-- Real expert files
+- Real threadline files
 - Real code diffs
 - Various LLM responses
 
 ## Open Questions
 
-1. **Expert Markdown Format**: What's the required structure?
+1. **Threadline Markdown Format**: What's the required structure?
    - Title?
    - Description?
    - Rules/guidelines?
@@ -469,7 +469,7 @@ npm run dev
    - `package.json`?
    - Environment variables?
 
-5. **Expert Versioning**: How to handle expert changes?
+5. **Threadline Versioning**: How to handle threadline changes?
    - Git history?
    - Version tags?
    - Change detection?
@@ -479,7 +479,7 @@ npm run dev
 1. **Set up monorepo structure** (or separate repos?)
 2. **Create CLI skeleton** with basic command
 3. **Create server skeleton** with basic endpoint
-4. **Implement expert validation**
+4. **Implement threadline validation**
 5. **Implement git diff collection**
 6. **Implement basic LLM integration**
 7. **Test end-to-end flow**

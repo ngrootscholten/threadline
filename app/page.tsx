@@ -12,8 +12,8 @@ export default function Home() {
               Code standards that teach themselves
             </h1>
             <p className="text-xl md:text-2xl text-slate-300 mb-12 leading-relaxed">
-              AI-powered code reviews with focused experts, parallel execution, and full auditability.
-              Your standards, your codebase, your control.
+              AI-powered code checks with focused threadlines, parallel execution, and full auditability.
+              Define your rules or principles - your choice. Your codebase, your control.
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
               <Link
@@ -67,17 +67,17 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-4xl font-bold mb-8 text-center">The Solution</h2>
           <p className="text-xl text-slate-300 mb-12 text-center leading-relaxed">
-            <strong className="text-white">Threadline</strong> guides you to structure <strong className="text-white">active documentation</strong> right inside your repository, alongside your code. We then execute massively parallel AI-powered code reviews, each focused on a single, specific concern, with full auditability to ensure trustworthy results.
+            <strong className="text-white">Threadline</strong> guides you to structure <strong className="text-white">active documentation</strong> right inside your repository, alongside your code. We then execute massively parallel AI-powered code checks, each focused on a single, specific concern, with full auditability to ensure trustworthy results.
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 mb-12">
             <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
-              <h3 className="text-xl font-semibold mb-2">Focused Experts</h3>
-              <p className="text-slate-400">Instead of one AI trying to check everything, Threadline runs multiple specialized AI reviewers in parallel. Each expert focuses on one thing and does it well.</p>
+              <h3 className="text-xl font-semibold mb-2">Focused AI checks</h3>
+              <p className="text-slate-400">Instead of one AI trying to check everything, Threadline runs multiple specialized checks in parallel. Each threadline focuses on one thing and does it well.</p>
             </div>
             <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Documentation That Lives With Your Code</h3>
-              <p className="text-slate-400">Your coding standards live in your repo, in an <code className="bg-slate-800 px-2 py-1 rounded text-sm">/experts</code> folder. They're version-controlled, reviewable, and always in sync with your codebase.</p>
+              <p className="text-slate-400">Your coding standards live in your repo, in a <code className="bg-slate-800 px-2 py-1 rounded text-sm">/threadlines</code> folder. Each threadline is version-controlled, reviewable, and always in sync with your codebase.</p>
             </div>
             <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Fully Auditable</h3>
@@ -85,7 +85,7 @@ export default function Home() {
             </div>
             <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Fast & Parallel</h3>
-              <p className="text-slate-400">Multiple experts run simultaneously, so you get comprehensive feedback in seconds, not minutes.</p>
+              <p className="text-slate-400">Multiple threadlines run simultaneously, so you get comprehensive feedback in seconds, not minutes.</p>
             </div>
           </div>
         </div>

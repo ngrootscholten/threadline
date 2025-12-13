@@ -27,5 +27,5 @@ threadline check
 
 ## Expert Files
 
-Create an `/experts` folder in your repository with markdown files. See [Expert Format](../../docs/EXPERT_FORMAT.md) for details.
+Create a `/threadlines` folder in your repository with markdown files. See [Threadline Format](../../docs/EXPERT_FORMAT.md) for details.
 

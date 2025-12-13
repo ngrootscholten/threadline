@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 
 export interface ReviewRequest {
-  experts: Array<{
+  threadlines: Array<{
     id: string;
     version: string;
     patterns: string[];
@@ -25,7 +25,7 @@ export interface ExpertResult {
 export interface ReviewResponse {
   results: ExpertResult[];
   metadata: {
-    totalExperts: number;
+    totalThreadlines: number;
     completed: number;
     timedOut: number;
     errors: number;

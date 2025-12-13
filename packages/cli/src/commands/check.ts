@@ -1,6 +1,6 @@
-import { findExperts } from '../validators/experts';
+import { findThreadlines } from '../validators/experts';
 import { getGitDiff } from '../git/diff';
-import { ReviewAPIClient } from '../api/client';
+import { ReviewAPIClient, ExpertResult } from '../api/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
@@ -8,16 +8,16 @@ import chalk from 'chalk';
 export async function checkCommand(options: { apiUrl?: string; apiKey?: string }) {
   const repoRoot = process.cwd();
   
-  console.log(chalk.blue('🔍 Threadline: Checking code against your experts...\n'));
+  console.log(chalk.blue('🔍 Threadline: Checking code against your threadlines...\n'));
 
   try {
-    // 1. Find and validate experts
-    console.log(chalk.gray('📋 Finding experts...'));
-    const experts = await findExperts(repoRoot);
-    console.log(chalk.green(`✓ Found ${experts.length} expert(s)\n`));
+    // 1. Find and validate threadlines
+    console.log(chalk.gray('📋 Finding threadlines...'));
+    const threadlines = await findThreadlines(repoRoot);
+    console.log(chalk.green(`✓ Found ${threadlines.length} threadline(s)\n`));
 
-    if (experts.length === 0) {
-      console.log(chalk.yellow('⚠️  No valid experts found. Add expert files to /experts folder.'));
+    if (threadlines.length === 0) {
+      console.log(chalk.yellow('⚠️  No valid threadlines found. Add threadline files to /threadlines folder.'));
       process.exit(0);
     }
 
@@ -31,12 +31,12 @@ export async function checkCommand(options: { apiUrl?: string; apiKey?: string }
     }
     console.log(chalk.green(`✓ Found ${gitDiff.changedFiles.length} changed file(s)\n`));
 
-    // 3. Read context files for each expert
-    const expertsWithContext = experts.map(expert => {
+    // 3. Read context files for each threadline
+    const threadlinesWithContext = threadlines.map(threadline => {
       const contextContent: Record<string, string> = {};
       
-      if (expert.contextFiles) {
-        for (const contextFile of expert.contextFiles) {
+      if (threadline.contextFiles) {
+        for (const contextFile of threadline.contextFiles) {
           const fullPath = path.join(repoRoot, contextFile);
           if (fs.existsSync(fullPath)) {
             contextContent[contextFile] = fs.readFileSync(fullPath, 'utf-8');
@@ -45,11 +45,11 @@ export async function checkCommand(options: { apiUrl?: string; apiKey?: string }
       }
 
       return {
-        id: expert.id,
-        version: expert.version,
-        patterns: expert.patterns,
-        content: expert.content,
-        contextFiles: expert.contextFiles,
+        id: threadline.id,
+        version: threadline.version,
+        patterns: threadline.patterns,
+        content: threadline.content,
+        contextFiles: threadline.contextFiles,
         contextContent
       };
     });
@@ -63,10 +63,10 @@ export async function checkCommand(options: { apiUrl?: string; apiKey?: string }
     }
 
     // 5. Call review API
-    console.log(chalk.gray('🤖 Running expert reviews...'));
+    console.log(chalk.gray('🤖 Running threadline checks...'));
     const client = new ReviewAPIClient(apiUrl);
     const response = await client.review({
-      experts: expertsWithContext,
+      threadlines: threadlinesWithContext,
       diff: gitDiff.diff,
       files: gitDiff.changedFiles,
       apiKey
@@ -89,11 +89,11 @@ function displayResults(response: any) {
   const { results, metadata } = response;
 
   console.log('\n' + chalk.bold('Results:\n'));
-  console.log(chalk.gray(`${metadata.totalExperts} expert reviews done`));
+  console.log(chalk.gray(`${metadata.totalThreadlines} threadlines checked`));
   
-  const notRelevant = results.filter(r => r.status === 'not_relevant').length;
-  const compliant = results.filter(r => r.status === 'compliant').length;
-  const attention = results.filter(r => r.status === 'attention').length;
+  const notRelevant = results.filter((r: ExpertResult) => r.status === 'not_relevant').length;
+  const compliant = results.filter((r: ExpertResult) => r.status === 'compliant').length;
+  const attention = results.filter((r: ExpertResult) => r.status === 'attention').length;
 
   if (notRelevant > 0) {
     console.log(chalk.gray(`  ${notRelevant} not relevant`));
@@ -115,7 +115,7 @@ function displayResults(response: any) {
   console.log('');
 
   // Show attention items
-  const attentionItems = results.filter(r => r.status === 'attention');
+  const attentionItems = results.filter((r: ExpertResult) => r.status === 'attention');
   if (attentionItems.length > 0) {
     for (const item of attentionItems) {
       console.log(chalk.yellow(`⚠️  ${item.expertId}`));

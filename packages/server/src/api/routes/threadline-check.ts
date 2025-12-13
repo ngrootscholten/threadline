@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { processExperts } from '../../processors/expert';
+import { processThreadlines } from '../../processors/expert';
 
 export interface ReviewRequest {
-  experts: Array<{
+  threadlines: Array<{
     id: string;
     version: string;
     patterns: string[];
@@ -20,8 +20,8 @@ export async function threadlineCheckRoute(req: Request, res: Response) {
     const request: ReviewRequest = req.body;
 
     // Validate request
-    if (!request.experts || !Array.isArray(request.experts) || request.experts.length === 0) {
-      return res.status(400).json({ error: 'experts array is required and cannot be empty' });
+    if (!request.threadlines || !Array.isArray(request.threadlines) || request.threadlines.length === 0) {
+      return res.status(400).json({ error: 'threadlines array is required and cannot be empty' });
     }
 
     if (!request.diff && typeof request.diff !== 'string') {
@@ -36,8 +36,8 @@ export async function threadlineCheckRoute(req: Request, res: Response) {
       return res.status(400).json({ error: 'apiKey is required' });
     }
 
-    // Process experts
-    const result = await processExperts(request);
+    // Process threadlines
+    const result = await processThreadlines(request);
 
     res.json(result);
   } catch (error: any) {

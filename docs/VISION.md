@@ -14,7 +14,7 @@ The result? Inconsistent code quality, technical debt that creeps in, and endles
 
 ## The Solution
 
-**Threadline** guides you to structure **active documentation** right inside your repository, alongside your code. Then we run massively parallel AI-powered code reviews—each focused on a single, specific concern—with full auditability so you can trust the results.
+**Threadline** guides you to structure **active documentation** right inside your repository, alongside your code. Then we run massively parallel AI-powered code checks—each focused on a single, specific concern—with full auditability so you can trust the results.
 
 ### What Makes Threadline Different?
 
@@ -22,7 +22,7 @@ The result? Inconsistent code quality, technical debt that creeps in, and endles
 Instead of one AI trying to check everything, Threadline runs multiple specialized AI reviewers in parallel. Each expert focuses on one thing and does it well.
 
 📝 **Documentation That Lives With Your Code**  
-Your coding standards live in your repo, in an `/experts` folder. They're version-controlled, reviewable, and always in sync with your codebase.
+Your coding standards live in your repo, in a `/threadlines` folder. They're version-controlled, reviewable, and always in sync with your codebase.
 
 🔍 **Fully Auditable**  
 Every AI review decision is logged and traceable. You can see exactly what was checked, why it passed or failed, and have confidence in the results.
@@ -36,7 +36,7 @@ Threadline doesn't replace your team's judgment. It amplifies it. By codifying y
 
 - **Consistency** across your entire codebase
 - **Confidence** that important rules are actually being followed
-- **Speed** in code reviews, with fewer back-and-forth cycles
+- **Speed** in code checks, with fewer back-and-forth cycles
 - **Control** over what gets checked and how
 
 ---

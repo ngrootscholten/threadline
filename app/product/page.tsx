@@ -12,7 +12,7 @@ export default function Product() {
               How Threadline Works
             </h1>
             <p className="text-xl md:text-2xl text-slate-300 mb-12 leading-relaxed">
-              An AI-powered linter based on your natural language documentation.
+              An AI-powered linter based on your natural language documentation. Define your standards as rules or principles - your choice.
             </p>
           </div>
         </div>
@@ -30,12 +30,12 @@ export default function Product() {
                 1
               </div>
               <div className="flex-1">
-                <h3 className="text-3xl font-bold mb-4">Define Your Experts</h3>
+                <h3 className="text-3xl font-bold mb-4">Define Your Threadlines</h3>
                 <p className="text-lg text-slate-300 mb-6">
-                  Create an <code className="bg-slate-800 px-2 py-1 rounded text-sm">/experts</code> folder in your repository. Each markdown file defines a single code quality concern or convention.
+                  Create a <code className="bg-slate-800 px-2 py-1 rounded text-sm">/threadlines</code> folder in your repository. Each markdown file is a threadline - a single code quality standard or convention.
                 </p>
                 <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 overflow-x-auto">
-                  <div className="text-sm text-slate-400 mb-2">Example: <code className="text-slate-300">experts/feature-flags.md</code></div>
+                  <div className="text-sm text-slate-400 mb-2">Example: <code className="text-slate-300">threadlines/feature-flags.md</code></div>
                   <pre className="text-slate-300"><code>{`# Feature Flag Standards
 
 All feature flags must:
@@ -44,7 +44,7 @@ All feature flags must:
 - Log flag evaluations to our analytics service`}</code></pre>
                 </div>
                 <p className="text-slate-400 mt-4 italic">
-                  Your experts live with your code, get version-controlled, and evolve with your standards.
+                  Your threadlines live with your code, get version-controlled, and evolve with your standards.
                 </p>
               </div>
             </div>
@@ -80,10 +80,10 @@ All feature flags must:
               <div className="flex-1">
                 <h3 className="text-3xl font-bold mb-4">Get Focused Feedback</h3>
                 <p className="text-lg text-slate-300 mb-6">
-                  Threadline validates your experts, detects your changes, and runs parallel AI reviews. Each expert analyzes your code diffs against its specific standard and returns a simple status: compliant, needs attention, or not relevant.
+                  Run <code className="bg-slate-800 px-2 py-1 rounded text-sm">npx threadline check</code> and Threadline detects your changes and runs parallel AI checks. Each threadline analyzes your code diffs against its specific standard and returns a simple status: compliant, needs attention, or not relevant.
                 </p>
                 <p className="text-slate-400">
-                  You only see the experts that require attention. No noise, just actionable feedback.
+                  You only see the threadlines that require attention. No noise, just actionable feedback.
                 </p>
               </div>
             </div>
@@ -101,11 +101,11 @@ All feature flags must:
                   You see a clean, focused report:
                 </p>
                 <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 font-mono text-sm">
-                  <div className="text-slate-300 mb-4">25 expert reviews done</div>
+                  <div className="text-slate-300 mb-4">25 threadlines checked</div>
                   <div className="text-slate-400 mb-1 ml-4">8 not relevant</div>
                   <div className="text-green-400 mb-1 ml-4">16 compliant</div>
                   <div className="text-yellow-400 mb-2 ml-4">1 attention</div>
-                  <div className="text-yellow-400 mb-2 mt-4">Feature Flag Expert</div>
+                  <div className="text-yellow-400 mb-2 mt-4">Feature Flag Threadline</div>
                   <div className="text-slate-300 ml-4 mb-1">src/api/users.ts:23 - Using direct SDK call instead of FeatureFlagService</div>
                   <div className="text-slate-300 ml-4">src/components/Header.tsx:67 - Missing fallback behavior when flag is unavailable</div>
                 </div>
@@ -124,12 +124,12 @@ All feature flags must:
           <h2 className="text-4xl font-bold mb-12 text-center">Why It Works</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
-              <h3 className="text-xl font-semibold mb-2">Focused Experts</h3>
-              <p className="text-slate-400">Each expert checks one thing. No AI trying to be everything to everyone.</p>
+              <h3 className="text-xl font-semibold mb-2">Focused AI Checks</h3>
+              <p className="text-slate-400">Each threadline checks one thing. No AI trying to be everything to everyone.</p>
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Parallel & Fast</h3>
-              <p className="text-slate-400">All experts run simultaneously. Get comprehensive feedback in seconds.</p>
+              <p className="text-slate-400">All threadlines run simultaneously. Get comprehensive feedback in seconds.</p>
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Fully Auditable</h3>
@@ -137,7 +137,7 @@ All feature flags must:
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Zero Configuration</h3>
-              <p className="text-slate-400">Works out of the box. Just add your experts and run.</p>
+              <p className="text-slate-400">Works out of the box. Just add your threadlines and run.</p>
             </div>
           </div>
         </div>
@@ -155,8 +155,8 @@ All feature flags must:
             <p className="text-slate-400">No installation needed. Works with any repository.</p>
           </div>
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8">
-            <h3 className="text-xl font-semibold mb-4">2. Add your experts</h3>
-            <p className="text-slate-400 mb-3">Create an <code className="bg-slate-800 px-1 py-0.5 rounded text-sm">/experts</code> folder and add markdown files defining your coding standards.</p>
+            <h3 className="text-xl font-semibold mb-4">2. Add your threadlines</h3>
+            <p className="text-slate-400 mb-3">Create a <code className="bg-slate-800 px-1 py-0.5 rounded text-sm">/threadlines</code> folder and add markdown files - each file is a threadline defining your coding standards.</p>
             <p className="text-slate-400">Make a change, run the check again, and iterate until everything passes.</p>
           </div>
         </div>
