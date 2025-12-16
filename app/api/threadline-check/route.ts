@@ -127,12 +127,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('❌ ERROR processing threadline-check:', error);
-    console.error('Stack:', error.stack);
+    console.error('❌ ERROR processing threadline-check:');
+    console.error('Message:', error?.message);
+    console.error('Name:', error?.name);
+    console.error('Stack:', error?.stack);
+    console.error('Full error:', error);
     return NextResponse.json(
       {
-        error: error.message || 'Internal server error',
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        error: error?.message || 'Internal server error',
+        name: error?.name,
+        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
       },
       { status: 500 }
     );
