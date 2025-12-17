@@ -1,5 +1,16 @@
 #!/usr/bin/env node
 
+// Load .env.local from project root before anything else
+import dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs';
+
+const projectRoot = process.cwd();
+const envLocalPath = path.join(projectRoot, '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  dotenv.config({ path: envLocalPath });
+}
+
 import { Command } from 'commander';
 import { checkCommand } from './commands/check';
 import { initCommand } from './commands/init';

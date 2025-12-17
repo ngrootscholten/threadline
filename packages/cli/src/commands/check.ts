@@ -1,6 +1,7 @@
 import { findThreadlines } from '../validators/experts';
 import { getGitDiff } from '../git/diff';
 import { ReviewAPIClient, ExpertResult } from '../api/client';
+import { getThreadlineApiKey } from '../utils/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
@@ -9,6 +10,20 @@ export async function checkCommand(options: { apiUrl?: string }) {
   const repoRoot = process.cwd();
   
   console.log(chalk.blue('🔍 Threadline: Checking code against your threadlines...\n'));
+
+  // Get and validate API key
+  const apiKey = getThreadlineApiKey();
+  if (!apiKey) {
+    console.error(chalk.red('❌ Error: THREADLINE_API_KEY is required'));
+    console.log('');
+    console.log(chalk.yellow('To fix this:'));
+    console.log(chalk.white('  1. Create a .env.local file in your project root'));
+    console.log(chalk.gray('  2. Add: THREADLINE_API_KEY=your-api-key-here'));
+    console.log(chalk.gray('  3. Make sure .env.local is in your .gitignore'));
+    console.log('');
+    console.log(chalk.gray('For CI/CD: Set THREADLINE_API_KEY as an environment variable in your platform settings.'));
+    process.exit(1);
+  }
 
   try {
     // 1. Find and validate threadlines
@@ -64,7 +79,8 @@ export async function checkCommand(options: { apiUrl?: string }) {
     const response = await client.review({
       threadlines: threadlinesWithContext,
       diff: gitDiff.diff,
-      files: gitDiff.changedFiles
+      files: gitDiff.changedFiles,
+      apiKey
     });
 
     // 6. Display results

@@ -14,14 +14,72 @@ Or use with npx:
 npx threadlines check
 ```
 
+## Quick Start
+
+### 1. Initialize Your First Threadline
+
+```bash
+npx threadlines init
+```
+
+This command:
+- Creates a `/threadlines` directory in your project root
+- Generates `threadlines/example.md` with a template threadline
+- Provides instructions for setting up your API key
+
+### 2. Configure API Key
+
+Create a `.env.local` file in your project root:
+
+```bash
+THREADLINE_API_KEY=your-api-key-here
+```
+
+**Important:** Make sure `.env.local` is in your `.gitignore` file!
+
+For CI/CD environments, set `THREADLINE_API_KEY` as an environment variable in your platform settings.
+
+### 3. Edit Your Threadline
+
+Edit `threadlines/example.md` with your coding standards, then rename it to something descriptive (e.g., `error-handling.md`).
+
+### 4. Run Checks
+
+```bash
+npx threadlines check
+```
+
 ## Usage
+
+### Initialize Threadline Template
+
+```bash
+threadlines init
+```
+
+Creates a template threadline file to get you started. The command will:
+- Create the `/threadlines` directory if it doesn't exist
+- Generate `threadlines/example.md` with boilerplate content
+- Display instructions for API key configuration
+
+### Check Code Against Threadlines
 
 ```bash
 threadlines check
 ```
 
+Analyzes your git changes against all threadlines in the `/threadlines` directory.
+
+**Options:**
+- `--api-url <url>` - Override the server URL (default: http://localhost:3000)
+
 ## Configuration
-BANANA
+
+### Environment Variables
+
+- `THREADLINE_API_KEY` - **Required.** Your Threadline API key for authentication
+  - Can be set in `.env.local` file (recommended for local development)
+  - Or as an environment variable (required for CI/CD)
 - `THREADLINE_API_URL` - Server URL (default: http://localhost:3000)
   - Can also be set with `--api-url` flag: `npx threadlines check --api-url http://your-server.com`
 

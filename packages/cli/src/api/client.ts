@@ -11,6 +11,7 @@ export interface ReviewRequest {
   }>;
   diff: string;
   files: string[];
+  apiKey: string;
 }
 
 export interface ExpertResult {

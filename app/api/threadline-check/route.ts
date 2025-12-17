@@ -12,6 +12,7 @@ export interface ReviewRequest {
   }>;
   diff: string;
   files: string[];
+  apiKey: string; // Client's Threadline API key for authentication
 }
 
 function countLinesInDiff(diff: string): { added: number; removed: number; total: number } {
@@ -111,17 +112,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get API key from server environment
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    // Validate client's Threadline API key
+    if (!request.apiKey || typeof request.apiKey !== 'string') {
+      return NextResponse.json(
+        { error: 'apiKey is required in request body' },
+        { status: 400 }
+      );
+    }
+
+    const serverApiKey = process.env.THREADLINE_API_KEY;
+    if (!serverApiKey) {
+      return NextResponse.json(
+        { error: 'Server configuration error: THREADLINE_API_KEY not set' },
+        { status: 500 }
+      );
+    }
+
+    if (request.apiKey !== serverApiKey) {
+      return NextResponse.json(
+        { error: 'Invalid API key' },
+        { status: 401 }
+      );
+    }
+
+    // Get OpenAI API key from server environment (server pays for OpenAI)
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
       return NextResponse.json(
         { error: 'Server configuration error: OPENAI_API_KEY not set' },
         { status: 500 }
       );
     }
 
-    // Process threadlines
-    const result = await processThreadlines({ ...request, apiKey });
+    // Process threadlines (use server's OpenAI API key)
+    const result = await processThreadlines({ ...request, apiKey: openaiApiKey });
 
     console.log(`✅ Processed: ${result.results.length} results, ${result.metadata.completed} completed, ${result.metadata.timedOut} timed out, ${result.metadata.errors} errors`);
 

@@ -61,6 +61,15 @@ export async function initCommand() {
     console.log(chalk.blue('Next steps:'));
     console.log(chalk.gray('  1. Edit threadlines/example.md with your coding standards'));
     console.log(chalk.gray('  2. Rename it to something descriptive (e.g., error-handling.md)'));
+    console.log('');
+    console.log(chalk.yellow('⚠️  IMPORTANT: API Key Setup Required'));
+    console.log(chalk.white('   To use threadlines check, you need a THREADLINE_API_KEY.'));
+    console.log('');
+    console.log(chalk.white('   Create a .env.local file in your project root with:'));
+    console.log(chalk.gray('     THREADLINE_API_KEY=your-api-key-here'));
+    console.log('');
+    console.log(chalk.white('   Make sure .env.local is in your .gitignore file!'));
+    console.log('');
     console.log(chalk.gray('  3. Run: npx threadlines check'));
   } catch (error: any) {
     console.error(chalk.red(`\n❌ Error: ${error.message}`));
