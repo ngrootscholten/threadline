@@ -45,6 +45,19 @@ export async function checkCommand(options: { apiUrl?: string }) {
       console.log(chalk.yellow('⚠️  No changes detected. Make some code changes and try again.'));
       process.exit(0);
     }
+    
+    // Check for zero diff (files changed but no actual code changes)
+    if (!gitDiff.diff || gitDiff.diff.trim() === '') {
+      console.log(chalk.blue('ℹ️  No code changes detected. Diff contains zero lines added or removed.'));
+      console.log(chalk.gray(`   ${gitDiff.changedFiles.length} file(s) changed but no content modifications detected.`));
+      console.log('');
+      console.log(chalk.bold('Results:\n'));
+      console.log(chalk.gray(`${threadlines.length} threadlines checked`));
+      console.log(chalk.gray(`  ${threadlines.length} not relevant`));
+      console.log('');
+      process.exit(0);
+    }
+    
     console.log(chalk.green(`✓ Found ${gitDiff.changedFiles.length} changed file(s)\n`));
 
     // 3. Read context files for each threadline
@@ -97,7 +110,12 @@ export async function checkCommand(options: { apiUrl?: string }) {
 }
 
 function displayResults(response: any) {
-  const { results, metadata } = response;
+  const { results, metadata, message } = response;
+
+  // Display informational message if present (e.g., zero diffs)
+  if (message) {
+    console.log('\n' + chalk.blue('ℹ️  ' + message));
+  }
 
   console.log('\n' + chalk.bold('Results:\n'));
   console.log(chalk.gray(`${metadata.totalThreadlines} threadlines checked`));

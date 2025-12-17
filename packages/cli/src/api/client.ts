@@ -30,6 +30,7 @@ export interface ReviewResponse {
     timedOut: number;
     errors: number;
   };
+  message?: string; // Optional informational message (e.g., for zero diffs)
 }
 
 export class ReviewAPIClient {

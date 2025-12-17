@@ -98,11 +98,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!request.diff || typeof request.diff !== 'string') {
+    // Allow empty diff (no code changes) - this is valid
+    if (request.diff === undefined || request.diff === null || typeof request.diff !== 'string') {
       return NextResponse.json(
-        { error: 'diff is required' },
+        { error: 'diff must be a string (empty string is allowed for no changes)' },
         { status: 400 }
       );
+    }
+
+    // Handle zero diffs - return success with all threadlines marked as not_relevant
+    // No LLM calls are made in this case - early return before processThreadlines()
+    if (request.diff.trim() === '') {
+      console.log('   ℹ️  No code changes detected (empty diff) - returning not_relevant for all threadlines');
+      return NextResponse.json({
+        results: request.threadlines.map(t => ({
+          expertId: t.id,
+          status: 'not_relevant' as const,
+          reasoning: 'No code changes detected'
+        })),
+        metadata: {
+          totalThreadlines: request.threadlines.length,
+          completed: request.threadlines.length,
+          timedOut: 0,
+          errors: 0
+        },
+        message: 'No code changes detected. Diff contains zero lines added or removed.'
+      });
     }
 
     if (!request.files || !Array.isArray(request.files)) {
