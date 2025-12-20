@@ -62,7 +62,6 @@ export default function Troubleshooting() {
         </p>
         <ul className="list-disc list-inside mb-4 text-slate-300 space-y-2 ml-4">
           <li>Verify CI environment variables are set (check platform documentation)</li>
-          <li>Use explicit flags (<code className="bg-slate-800 px-1.5 py-0.5 rounded text-sm text-green-400">--branch</code>, <code className="bg-slate-800 px-1.5 py-0.5 rounded text-sm text-green-400">--commit</code>) if auto-detection fails</li>
           <li>Check that git repository is properly initialized in CI environment</li>
           <li>Ensure environment variables are set as secrets, not plain text</li>
         </ul>
