@@ -36,9 +36,12 @@ export default function Home() {
       {/* Problem Section */}
       <section className="max-w-7xl mx-auto px-6 py-24">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-4xl font-bold mb-8 text-center">The Problem</h2>
-          <p className="text-xl text-slate-300 mb-12 text-center leading-relaxed">
-            Getting teams to follow consistent quality standards is <strong className="text-white">hard</strong>. Really hard.
+          <h2 className="text-4xl font-bold mb-8 text-center">The Gap in Modern Tooling</h2>
+          <p className="text-xl text-slate-300 mb-4 text-center leading-relaxed">
+            Writing code is faster than ever, but <strong className="text-white">verifying it requires new techniques</strong>.
+          </p>
+          <p className="text-lg text-slate-400 mb-12 text-center">
+            Feedback loops happen too late - only after you've pushed code and lost context. AI code reviews are trained on the entire Internet, and don't focus on nuances of your teams and tech.
           </p>
           
           <div className="grid md:grid-cols-2 gap-6 mb-16">
@@ -48,11 +51,11 @@ export default function Home() {
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Linting</h3>
-              <p className="text-slate-400">Catches syntax errors, but misses the nuanced stuff that actually matters.</p>
+              <p className="text-slate-400">Catches syntax errors, but misses important nuance.</p>
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">AI Code Reviewers</h3>
-              <p className="text-slate-400">Powerful, but you can't trust them. Did they actually check what you care about?</p>
+              <p className="text-slate-400">Powerful, but you can't audit them. Did they actually check each important thing you care about?</p>
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Ramp Up Time</h3>
@@ -62,26 +65,87 @@ export default function Home() {
         </div>
       </section>
 
+      {/* From Advice to Authority Section */}
+      <section className="max-w-7xl mx-auto px-6 py-24">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-4xl font-bold mb-8 text-center">From Advice to Authority</h2>
+          <p className="text-xl text-slate-300 mb-12 text-center leading-relaxed">
+            Chat-based AI is <strong className="text-white">advisory</strong> - it suggests. Threadline is <strong className="text-green-400">deterministic</strong> - it validates.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8">
+              <h3 className="text-2xl font-bold mb-4 text-slate-400">Advisory (Chat AI)</h3>
+              <ul className="space-y-3 text-slate-400">
+                <li className="flex items-start gap-3">
+                  <span className="text-slate-600 mt-1">•</span>
+                  <span>Suggests improvements</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-slate-600 mt-1">•</span>
+                  <span>Opinions vary by session</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-slate-600 mt-1">•</span>
+                  <span>No audit trail</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-slate-600 mt-1">•</span>
+                  <span>Can't enforce standards</span>
+                </li>
+              </ul>
+            </div>
+            <div className="bg-gradient-to-br from-green-950/30 to-slate-900/50 border border-green-600/50 rounded-xl p-8">
+              <h3 className="text-2xl font-bold mb-4 text-green-400">Deterministic (Threadline)</h3>
+              <ul className="space-y-3 text-slate-300">
+                <li className="flex items-start gap-3">
+                  <span className="text-green-400 mt-1">✓</span>
+                  <span>Validates against your standards</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-green-400 mt-1">✓</span>
+                  <span>Consistent, repeatable results</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-green-400 mt-1">✓</span>
+                  <span>Full audit trail of every check</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-green-400 mt-1">✓</span>
+                  <span>Runs in build process - creates authority</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-8 text-center">
+            <p className="text-lg text-slate-300 leading-relaxed">
+              By running during the build process, Threadline creates a <strong className="text-white">traceable audit log</strong> of exactly why code was allowed into your main branch. It doesn't just suggest - it validates.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Solution Section */}
-      <section className="max-w-7xl mx-auto px-6 py-12 bg-gradient-to-b from-transparent to-slate-950/50">
+      <section className="max-w-7xl mx-auto px-6 py-24 bg-gradient-to-b from-transparent to-slate-950/50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-4xl font-bold mb-8 text-center">The Solution</h2>
           <p className="text-xl text-slate-300 mb-12 text-center leading-relaxed">
-            <strong className="text-white">Threadline</strong> guides you to structure <strong className="text-white">active documentation</strong> right inside your repository, alongside your code. We then execute massively parallel AI-powered code checks, each focused on a single, specific concern, with full auditability to ensure trustworthy results.
+            <strong className="text-white">Threadline</strong> guides you to structure <strong className="text-white">active documentation</strong> right inside your repository, alongside your code. We then execute massively parallel AI-powered code checks, each focused on a single, specific concern, with <strong className="text-green-400">full auditability</strong> to ensure trustworthy results.
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 mb-12">
             <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
-              <h3 className="text-xl font-semibold mb-2">Focused AI checks</h3>
+              <h3 className="text-xl font-semibold mb-2">Focused AI Checks</h3>
               <p className="text-slate-400">Instead of one AI trying to check everything, Threadline runs multiple specialized checks in parallel. Each threadline focuses on one thing and does it well.</p>
             </div>
             <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Documentation That Lives With Your Code</h3>
               <p className="text-slate-400">Your coding standards live in your repo, in a <code className="bg-slate-800 px-2 py-1 rounded text-sm">/threadlines</code> folder. Each threadline is version-controlled, reviewable, and always in sync with your codebase.</p>
             </div>
-            <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
-              <h3 className="text-xl font-semibold mb-2">Fully Auditable</h3>
-              <p className="text-slate-400">Every AI review decision is logged and traceable. You can see exactly what was checked, why it passed or failed, and have confidence in the results.</p>
+            <div className="bg-gradient-to-br from-green-950/30 to-slate-900/50 border border-green-600/50 rounded-xl p-6 hover:border-green-500 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
+              <h3 className="text-xl font-semibold mb-2 text-green-400">Fully Auditable</h3>
+              <p className="text-slate-300">Every AI review decision is logged and traceable. You can see exactly what was checked, why it passed or failed, and have confidence in the results. Creates a deterministic audit trail of code quality decisions.</p>
             </div>
             <div className="bg-slate-900/50 border border-green-900/30 rounded-xl p-6 hover:border-green-600 hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1 transition-all duration-200">
               <h3 className="text-xl font-semibold mb-2">Fast & Parallel</h3>

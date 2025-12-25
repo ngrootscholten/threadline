@@ -63,38 +63,52 @@ const fetchData = async () => {
       </section>
 
       <section className="mb-12">
-        <h2 className="text-2xl font-semibold mt-8 mb-4 text-green-400">React Component Simplicity</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4 text-green-400">React Component Over-Abstraction</h2>
         <p className="text-slate-300 mb-4">
-          Avoid over-abstraction in React components. Too many configurable properties make components hard to understand and increase blast radius.
+          Avoid "prop soup" and premature abstraction. Components overloaded with props become unmaintainable. Sometimes duplication is better than over-abstraction.
         </p>
         <pre className="bg-slate-950 border border-slate-800 rounded-lg p-4 overflow-x-auto text-sm text-slate-300 mb-4">
           <code>{`---
-id: react-component-simplicity
+id: react-component-over-abstraction
 version: 1.0.0
 patterns:
   - "**/*.tsx"
   - "**/components/**/*.ts"
+  - "**/components/**/*.tsx"
 context_files: []
 ---
 
-# React Component Simplicity
+# React Component Over-Abstraction
 
-Components should be easy to understand. Avoid excessive configurability.
+Over-emphasizing "reusability" often leads to "prop soup": components overloaded with props to handle every possible variation. This creates abstractions that become difficult to maintain and modify.
 
 ## Guidelines
 
-1. **Limit configurable properties**
+1. **Avoid "prop soup"**
+   - Components with 10+ props are a code smell
+   - Components with 20+ props exceed reasonable complexity
    - Prefer composition over configuration
-   - If a component has 10+ props, consider splitting it
+   - Sometimes duplication is better than entanglement
 
-2. **Keep blast radius small**
-   - Changes to a component shouldn't affect unrelated features
-   - Use TypeScript to enforce prop contracts
+2. **Avoid premature abstraction**
+   - Don't abstract until you've seen 3-4 real use cases
+   - Abstraction without proven reuse is speculation
+   - Every abstraction adds cognitive overhead
+
+3. **Keep components simple and context-aware**
+   - Components should be easy to understand
+   - Prefer self-contained components over generic ones
+   - It's acceptable to have similar components that are 80% the same
+
+4. **Know when reuse stops being efficient**
+   - If modifying a component risks breaking unrelated features, it's over-abstracted
+   - If a component has many conditional branches, split it
+   - Reuse should serve clarity, not the other way around
 
 ## Examples
 
 \`\`\`typescript
-// ❌ Bad - Too many props, hard to understand
+// ❌ Bad - "Prop soup" - too many props, hard to understand and maintain
 <Button 
   variant="primary" 
   size="large" 
@@ -104,15 +118,46 @@ Components should be easy to understand. Avoid excessive configurability.
   disabled={false}
   onClick={handleClick}
   onHover={handleHover}
+  onFocus={handleFocus}
   ariaLabel="..."
   dataTestId="..."
+  className="..."
+  style={...}
+  theme="dark"
+  rounded={true}
+  shadow={true}
+  fullWidth={false}
+  tooltip="..."
+  badge={...}
 />
 
-// ✅ Good - Focused, composable
+// ❌ Bad - Over-abstracted mega-component with conditional branches
+function UniversalForm({ type, ...props }) {
+  if (type === 'login') {
+    // login logic
+  } else if (type === 'register') {
+    // register logic
+  } else if (type === 'password-reset') {
+    // reset logic
+  }
+  // ... 20 more conditionals
+}
+
+// ✅ Good - Focused, composable, easy to understand
 <Button variant="primary" onClick={handleClick}>
   <Icon name="arrow" />
   Submit
 </Button>
+
+// ✅ Good - Simple, self-contained components (even if similar)
+function LoginForm() {
+  // Simple, focused login form
+}
+
+function RegisterForm() {
+  // Simple, focused register form
+  // Similar to LoginForm but independent
+}
 \`\`\``}</code>
         </pre>
       </section>
