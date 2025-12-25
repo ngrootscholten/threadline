@@ -38,7 +38,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-4xl font-bold mb-8 text-center">The Gap in Modern Tooling</h2>
           <p className="text-xl text-slate-300 mb-4 text-center leading-relaxed">
-            Writing code is faster than ever, but <strong className="text-white">verifying it requires new techniques</strong>.
+            Writing code accelerates, but <strong className="text-white">verification and trust lag behind</strong>. We need verification techniques that match the speed of modern development.
           </p>
           <p className="text-lg text-slate-400 mb-12 text-center">
             Feedback loops happen too late - only after you've pushed code and lost context. AI code reviews are trained on the entire Internet, and don't focus on nuances of your teams and tech.
@@ -58,7 +58,7 @@ export default function Home() {
               <p className="text-slate-400">Powerful, but you can't audit them. Did they actually check each important thing you care about?</p>
             </div>
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-1 transition-all duration-200">
-              <h3 className="text-xl font-semibold mb-2">Ramp Up Time</h3>
+              <h3 className="text-xl font-semibold mb-2">Team Ramp Up Time</h3>
               <p className="text-slate-400">Nuanced strategies and patterns for avoiding problems typically only live inside senior engineers' minds. Ramp-up times are long.</p>
             </div>
           </div>
