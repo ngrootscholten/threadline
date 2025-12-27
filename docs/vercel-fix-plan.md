@@ -49,13 +49,28 @@ From Vercel build logs:
 ## Priority Order
 1. **High**: Fix branch name (use `VERCEL_GIT_COMMIT_REF`)
 2. **High**: Fix repo name (construct from Vercel env vars)
-3. **Medium**: Add similar logic for GitHub Actions
+3. **Medium**: Improve GitHub Actions PR detection
+   - Use `GITHUB_HEAD_SHA` instead of `GITHUB_SHA` for PRs (to avoid merge commit SHA)
+   - Consider passing PR title from workflow YAML as env var
 4. **Medium**: Add similar logic for GitLab CI
 
 ## Expected Outcome
 - Vercel builds will correctly detect:
-  - Repository: `https://github.com/ngrootscholten/threadline.git`
-  - Branch: `main` (not `master`)
+  - Repository: `https://github.com/ngrootscholten/threadline.git` (constructed from env vars)
+  - Branch: `main` (from `VERCEL_GIT_COMMIT_REF`, not git command)
   - Environment: `vercel`
   - Review context: `branch` (not `local`)
+
+## Comparison: GitHub Actions vs Vercel
+
+**GitHub Actions** (working correctly ✅):
+- Git remotes available → repo name from git works
+- Git branch detection works → branch name from git works
+- Environment detection works → correctly identifies "github"
+
+**Vercel** (needs fix ❌):
+- Git remotes NOT available → repo name from git fails
+- Git branch detection wrong → returns "master" instead of "main"
+- Environment detection works → correctly identifies "vercel"
+- Solution: Use Vercel env vars instead of git commands
 

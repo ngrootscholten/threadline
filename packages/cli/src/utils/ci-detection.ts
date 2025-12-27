@@ -22,6 +22,20 @@ export interface AutoReviewTarget {
 export function getAutoReviewTarget(): AutoReviewTarget | null {
   console.log(chalk.gray('   [DEBUG] getAutoReviewTarget: Starting detection...'));
   
+  // Log ALL GitHub Actions env vars that start with GITHUB_ to see what's available
+  if (process.env.GITHUB_ACTIONS) {
+    console.log(chalk.gray('   [DEBUG] getAutoReviewTarget: All GITHUB_* env vars:'));
+    const githubVars = Object.keys(process.env)
+      .filter(key => key.startsWith('GITHUB_'))
+      .sort();
+    githubVars.forEach(key => {
+      const value = process.env[key];
+      // Truncate long values for readability
+      const displayValue = value && value.length > 100 ? value.substring(0, 100) + '...' : value;
+      console.log(chalk.gray(`     ${key} = "${displayValue || 'NOT SET'}"`));
+    });
+  }
+  
   // 1. Check for PR/MR context (most authoritative)
   
   // GitHub Actions PR
@@ -31,11 +45,15 @@ export function getAutoReviewTarget(): AutoReviewTarget | null {
   if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
     const targetBranch = process.env.GITHUB_BASE_REF;
     const sourceBranch = process.env.GITHUB_HEAD_REF;
-    const prNumber = process.env.GITHUB_EVENT_PULL_REQUEST_NUMBER;
+    // Try multiple possible env var names for PR number
+    const prNumber = process.env.GITHUB_EVENT_PULL_REQUEST_NUMBER || 
+                     process.env.GITHUB_PR_NUMBER ||
+                     process.env.GITHUB_EVENT_NUMBER;
     
     console.log(chalk.gray(`   [DEBUG] getAutoReviewTarget: GITHUB_BASE_REF = "${targetBranch || 'NOT SET'}"`));
     console.log(chalk.gray(`   [DEBUG] getAutoReviewTarget: GITHUB_HEAD_REF = "${sourceBranch || 'NOT SET'}"`));
-    console.log(chalk.gray(`   [DEBUG] getAutoReviewTarget: GITHUB_EVENT_PULL_REQUEST_NUMBER = "${prNumber || 'NOT SET'}"`));
+    console.log(chalk.gray(`   [DEBUG] getAutoReviewTarget: GITHUB_EVENT_PULL_REQUEST_NUMBER = "${process.env.GITHUB_EVENT_PULL_REQUEST_NUMBER || 'NOT SET'}"`));
+    console.log(chalk.gray(`   [DEBUG] getAutoReviewTarget: GITHUB_EVENT_NUMBER = "${process.env.GITHUB_EVENT_NUMBER || 'NOT SET'}"`));
     
     if (targetBranch && sourceBranch && prNumber) {
       console.log(chalk.green(`   [DEBUG] getAutoReviewTarget: Detected GitHub PR #${prNumber}`));
