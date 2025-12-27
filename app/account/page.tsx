@@ -38,12 +38,12 @@ export default async function AccountPage() {
                 </div>
               )}
 
-              {(session.user as any)?.company && (
+              {session.user?.company && (
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-1">
                     Company
                   </label>
-                  <p className="text-white">{(session.user as any).company}</p>
+                  <p className="text-white">{session.user.company}</p>
                 </div>
               )}
 
@@ -52,7 +52,7 @@ export default async function AccountPage() {
                   User ID
                 </label>
                 <p className="text-slate-400 font-mono text-sm">
-                  {(session.user as any)?.id || "Not available"}
+                  {session.user?.id || "Not available"}
                 </p>
               </div>
 

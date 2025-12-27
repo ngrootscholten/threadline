@@ -81,7 +81,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id
         token.email = user.email
         token.name = user.name
-        token.company = (user as any).company
+        token.company = user.company
         token.emailVerified = user.emailVerified
       }
       return token
