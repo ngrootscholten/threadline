@@ -1,5 +1,5 @@
 import { findThreadlines } from '../validators/experts';
-import { getGitDiff, getBranchDiff, getCommitDiff, getPRMRDiff } from '../git/diff';
+import { getGitDiff, getBranchDiff, getCommitDiff, getPRMRDiff, getCommitMessage } from '../git/diff';
 import { getFileContent, getFolderContent, getMultipleFilesContent } from '../git/file';
 import { getRepoName, getBranchName } from '../git/repo';
 import { getAutoReviewTarget } from '../utils/ci-detection';
@@ -65,6 +65,9 @@ export async function checkCommand(options: {
     // 2. Determine review target and get git diff
     let gitDiff: { diff: string; changedFiles: string[] };
     let reviewContext: { type: string; value?: string } = { type: 'local' };
+    let commitSha: string | undefined = undefined;
+    let commitMessage: string | undefined = undefined;
+    let prTitle: string | undefined = undefined;
     
     // Validate mutually exclusive flags
     const explicitFlags = [options.branch, options.commit, options.file, options.folder, options.files].filter(Boolean);
@@ -95,6 +98,12 @@ export async function checkCommand(options: {
       console.log(chalk.gray(`📝 Collecting git changes for commit: ${options.commit}...`));
       gitDiff = await getCommitDiff(repoRoot, options.commit);
       reviewContext = { type: 'commit', value: options.commit };
+      commitSha = options.commit;
+      // Fetch commit message (reliable when we have SHA)
+      const message = await getCommitMessage(repoRoot, options.commit);
+      if (message) {
+        commitMessage = message;
+      }
     } else {
       // Auto-detect CI environment or use local changes
       const autoTarget = getAutoReviewTarget();
@@ -105,6 +114,10 @@ export async function checkCommand(options: {
           console.log(chalk.gray(`📝 Collecting git changes for ${autoTarget.type.toUpperCase()}: ${autoTarget.value}...`));
           gitDiff = await getPRMRDiff(repoRoot, autoTarget.sourceBranch!, autoTarget.targetBranch!);
           reviewContext = { type: autoTarget.type, value: autoTarget.value };
+          // Use PR title from GitLab CI (reliable env var)
+          if (autoTarget.prTitle) {
+            prTitle = autoTarget.prTitle;
+          }
         } else if (autoTarget.type === 'branch') {
           // Branch: use branch vs base
           console.log(chalk.gray(`📝 Collecting git changes for branch: ${autoTarget.value}...`));
@@ -115,6 +128,12 @@ export async function checkCommand(options: {
           console.log(chalk.gray(`📝 Collecting git changes for commit: ${autoTarget.value}...`));
           gitDiff = await getCommitDiff(repoRoot, autoTarget.value!);
           reviewContext = { type: 'commit', value: autoTarget.value };
+          commitSha = autoTarget.value;
+          // Fetch commit message (reliable when we have SHA)
+          const message = await getCommitMessage(repoRoot, autoTarget.value!);
+          if (message) {
+            commitMessage = message;
+          }
         } else {
           // Fallback: local development
           console.log(chalk.gray('📝 Collecting git changes...'));
@@ -189,7 +208,10 @@ export async function checkCommand(options: {
       apiKey,
       account,
       repoName: repoName || undefined,
-      branchName: branchName || undefined
+      branchName: branchName || undefined,
+      commitSha: commitSha,
+      commitMessage: commitMessage,
+      prTitle: prTitle
     });
 
     // 7. Display results (with filtering if --full not specified)

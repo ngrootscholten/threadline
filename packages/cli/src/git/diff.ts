@@ -23,10 +23,10 @@ export async function getGitDiff(repoRoot: string): Promise<GitDiffResult> {
   let diff: string;
   if (status.staged.length > 0) {
     // Use staged changes
-    diff = await git.diff(['--cached']);
+    diff = await git.diff(['--cached', '-U200']);
   } else if (status.files.length > 0) {
     // Use unstaged changes
-    diff = await git.diff();
+    diff = await git.diff(['-U200']);
   } else {
     // No changes
     return {
@@ -81,7 +81,7 @@ export async function getBranchDiff(
         const previousCommit = await git.revparse(['HEAD~1']).catch(() => null);
         if (previousCommit) {
           // Use commit-based diff instead
-          const diff = await git.diff([`${previousCommit}..HEAD`]);
+          const diff = await git.diff([`${previousCommit}..HEAD`, '-U200']);
           const diffSummary = await git.diffSummary([`${previousCommit}..HEAD`]);
           const changedFiles = diffSummary.files.map(f => f.file);
           
@@ -146,7 +146,7 @@ export async function getBranchDiff(
 
   // Get diff between base and branch (cumulative diff of all commits)
   // Format: git diff base...branch (three-dot notation finds common ancestor)
-  const diff = await git.diff([`${base}...${branchName}`]);
+  const diff = await git.diff([`${base}...${branchName}`, '-U200']);
   
   // Get list of changed files
   const diffSummary = await git.diffSummary([`${base}...${branchName}`]);
@@ -156,6 +156,23 @@ export async function getBranchDiff(
     diff: diff || '',
     changedFiles
   };
+}
+
+/**
+ * Get commit message for a specific commit SHA
+ * Returns full commit message (subject + body) or null if commit not found
+ */
+export async function getCommitMessage(repoRoot: string, sha: string): Promise<string | null> {
+  const git: SimpleGit = simpleGit(repoRoot);
+
+  try {
+    // Get full commit message (subject + body)
+    const message = await git.show([sha, '--format=%B', '--no-patch']);
+    return message.trim() || null;
+  } catch (error: any) {
+    // Commit not found or invalid
+    return null;
+  }
 }
 
 /**
@@ -177,7 +194,7 @@ export async function getCommitDiff(repoRoot: string, sha: string): Promise<GitD
   
   try {
     // Get diff using git show
-    diff = await git.show([sha, '--format=', '--no-color']);
+    diff = await git.show([sha, '--format=', '--no-color', '-U200']);
     
     // Get changed files using git show --name-only
     const commitFiles = await git.show([sha, '--name-only', '--format=', '--pretty=format:']);
@@ -188,7 +205,7 @@ export async function getCommitDiff(repoRoot: string, sha: string): Promise<GitD
   } catch (error: any) {
     // Fallback: try git diff format
     try {
-      diff = await git.diff([`${sha}^..${sha}`]);
+      diff = await git.diff([`${sha}^..${sha}`, '-U200']);
       // Get files from diff summary
       const diffSummary = await git.diffSummary([`${sha}^..${sha}`]);
       changedFiles = diffSummary.files.map(f => f.file);
@@ -221,7 +238,7 @@ export async function getPRMRDiff(
 
   // Get diff between target and source (cumulative diff)
   // Format: git diff target...source (three-dot notation finds common ancestor)
-  const diff = await git.diff([`${targetBranch}...${sourceBranch}`]);
+  const diff = await git.diff([`${targetBranch}...${sourceBranch}`, '-U200']);
   
   // Get list of changed files
   const diffSummary = await git.diffSummary([`${targetBranch}...${sourceBranch}`]);

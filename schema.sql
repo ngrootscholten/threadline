@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS checks (
   repo_name TEXT,
   branch_name TEXT,
   commit_sha TEXT,
+  commit_message TEXT,
+  pr_title TEXT,
   review_context TEXT,
   diff_lines_added INTEGER DEFAULT 0,
   diff_lines_removed INTEGER DEFAULT 0,

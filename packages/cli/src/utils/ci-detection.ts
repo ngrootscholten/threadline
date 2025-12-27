@@ -13,6 +13,8 @@ export interface AutoReviewTarget {
   // For PR/MR: both source and target branches
   sourceBranch?: string;
   targetBranch?: string;
+  // For MR: title from GitLab CI (reliable env var)
+  prTitle?: string;
 }
 
 export function getAutoReviewTarget(): AutoReviewTarget | null {
@@ -39,13 +41,15 @@ export function getAutoReviewTarget(): AutoReviewTarget | null {
     const targetBranch = process.env.CI_MERGE_REQUEST_TARGET_BRANCH_NAME;
     const sourceBranch = process.env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME;
     const mrNumber = process.env.CI_MERGE_REQUEST_IID;
+    const mrTitle = process.env.CI_MERGE_REQUEST_TITLE; // Reliable GitLab CI env var
     
     if (targetBranch && sourceBranch && mrNumber) {
       return {
         type: 'mr',
         value: mrNumber,
         sourceBranch,
-        targetBranch
+        targetBranch,
+        prTitle: mrTitle || undefined // Only include if present
       };
     }
   }

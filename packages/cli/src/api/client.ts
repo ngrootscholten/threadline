@@ -14,7 +14,10 @@ export interface ReviewRequest {
   apiKey: string;
   account: string;        // REQUIRED: Account identifier
   repoName?: string;     // Raw git remote URL (e.g., "https://github.com/user/repo.git")
-  branchName?: string;   // NEW: Branch name (e.g., "feature/x")
+  branchName?: string;   // Branch name (e.g., "feature/x")
+  commitSha?: string;    // Commit SHA (when commit context available)
+  commitMessage?: string; // Commit message (when commit context available)
+  prTitle?: string;      // PR/MR title (when GitLab MR context available)
 }
 
 export interface ExpertResult {

@@ -18,7 +18,10 @@ export interface ReviewRequest {
   apiKey: string; // Client's Threadline API key for authentication
   account: string;        // REQUIRED: Account identifier
   repoName?: string;     // Raw git remote URL (e.g., "https://github.com/user/repo.git")
-  branchName?: string;   // NEW: Branch name (e.g., "feature/x")
+  branchName?: string;   // Branch name (e.g., "feature/x")
+  commitSha?: string;    // Commit SHA (when commit context available)
+  commitMessage?: string; // Commit message (when commit context available)
+  prTitle?: string;      // PR/MR title (when GitLab MR context available)
 }
 
 function countLinesInDiff(diff: string): { added: number; removed: number; total: number } {
@@ -241,6 +244,7 @@ export async function POST(req: NextRequest) {
         diffStats,
         contextStats,
         reviewContext,
+        commitSha: request.commitSha,
         userId
       });
     } catch (auditError: any) {

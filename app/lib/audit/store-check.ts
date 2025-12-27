@@ -41,6 +41,8 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
         repo_name,
         branch_name,
         commit_sha,
+        commit_message,
+        pr_title,
         review_context,
         diff_lines_added,
         diff_lines_removed,
@@ -49,7 +51,7 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
         context_files_count,
         context_files_total_lines,
         threadlines_count
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING id`,
       [
         userId || null,
@@ -57,6 +59,8 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
         request.repoName || null,
         request.branchName || null,
         commitSha || null,
+        request.commitMessage || null,
+        request.prTitle || null,
         reviewContext,
         diffStats.added,
         diffStats.removed,
