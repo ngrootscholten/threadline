@@ -27,7 +27,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-workspaces
       
       - name: Build (includes threadlines check, linting, tsc, etc.)
         env:
