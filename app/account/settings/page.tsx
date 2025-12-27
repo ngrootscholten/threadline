@@ -71,7 +71,7 @@ export default function SettingsPage() {
   };
 
   const handleCopyEmail = async () => {
-    if (session.user?.email) {
+    if (session?.user?.email) {
       await navigator.clipboard.writeText(session.user.email);
       setCopied("email");
       setTimeout(() => setCopied(null), 2000);
@@ -87,7 +87,7 @@ export default function SettingsPage() {
   };
 
   const handleCopyEnvFormat = async () => {
-    if (session.user?.email && newApiKey) {
+    if (session?.user?.email && newApiKey) {
       const envContent = `THREADLINE_ACCOUNT='${session.user.email}'\nTHREADLINE_API_KEY='${newApiKey}'`;
       await navigator.clipboard.writeText(envContent);
       setCopied("env");
