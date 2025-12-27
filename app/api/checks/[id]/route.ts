@@ -25,6 +25,7 @@ export async function GET(
     
     // Get check metadata
     // Allow access if user_id matches OR if account matches (for legacy env var auth)
+    // Use AT TIME ZONE 'UTC' to explicitly mark timestamp as UTC before formatting
     const checkResult = await pool.query(
       `SELECT 
         c.id,
@@ -39,7 +40,7 @@ export async function GET(
         c.context_files_count,
         c.context_files_total_lines,
         c.threadlines_count,
-        c.created_at,
+        TO_CHAR(c.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at_iso,
         c.account
       FROM checks c
       WHERE c.id = $1 AND (c.user_id = $2 OR c.account = $3)`,
@@ -119,7 +120,7 @@ export async function GET(
         contextFilesCount: check.context_files_count,
         contextFilesTotalLines: check.context_files_total_lines,
         threadlinesCount: check.threadlines_count,
-        createdAt: check.created_at,
+        createdAt: check.created_at_iso, // Already formatted as ISO 8601 with 'Z' from PostgreSQL
         diff: diffResult.rows[0]?.diff_content || null,
         diffFormat: diffResult.rows[0]?.diff_format || 'unified',
         threadlines

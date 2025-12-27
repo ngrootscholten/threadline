@@ -32,17 +32,17 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   name TEXT, -- NextAuth required
   email TEXT UNIQUE NOT NULL, -- NextAuth required
-  "emailVerified" TIMESTAMP, -- NextAuth required (camelCase - quoted to preserve case)
+  "emailVerified" TIMESTAMPTZ, -- NextAuth required (camelCase - quoted to preserve case)
   image TEXT, -- NextAuth required
   
       -- Our custom fields (snake_case):
       company TEXT, -- Custom field for user's company
       api_key_hash TEXT, -- Hashed API key for CLI authentication (SHA256 hash)
-      api_key_created_at TIMESTAMP, -- When the API key was generated
+      api_key_created_at TIMESTAMPTZ, -- When the API key was generated
       
       -- Timestamps (snake_case - our convention):
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
 -- Accounts table
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "sessionToken" TEXT UNIQUE NOT NULL, -- NextAuth required (camelCase - quoted)
   "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- NextAuth required (camelCase - quoted)
-  expires TIMESTAMP NOT NULL -- NextAuth required
+  expires TIMESTAMPTZ NOT NULL -- NextAuth required
 );
 
 -- Verification tokens table
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS verification_token (
   -- NextAuth required fields:
   identifier TEXT NOT NULL, -- NextAuth required
   token TEXT NOT NULL, -- NextAuth required
-  expires TIMESTAMP NOT NULL, -- NextAuth required
+  expires TIMESTAMPTZ NOT NULL, -- NextAuth required
   PRIMARY KEY (identifier, token)
 );
 
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS checks (
   context_files_count INTEGER DEFAULT 0,
   context_files_total_lines INTEGER DEFAULT 0,
   threadlines_count INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS check_threadlines (
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS check_threadlines (
   threadline_content TEXT NOT NULL,
   context_files JSONB,
   context_content JSONB,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS check_results (
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS check_results (
   reasoning TEXT,
   line_references JSONB,
   file_references JSONB,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS check_diffs (
@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS check_diffs (
   check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE UNIQUE,
   diff_content TEXT NOT NULL,
   diff_format TEXT DEFAULT 'unified',
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes for audit tables

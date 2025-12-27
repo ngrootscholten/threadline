@@ -78,8 +78,10 @@ export default function DashboardPage() {
   }
 
   const formatDate = (dateString: string) => {
+    // dateString is now ISO 8601 with 'Z' (UTC indicator) from API
+    // JavaScript Date will correctly parse it as UTC and convert to local time
     const date = new Date(dateString);
-    return date.toLocaleString("en-US", {
+    return date.toLocaleString(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",

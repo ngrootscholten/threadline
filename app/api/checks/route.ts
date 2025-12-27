@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const pool = getPool();
     
     // Get the 10 most recent checks for this user
+    // Use AT TIME ZONE 'UTC' to explicitly mark timestamp as UTC before formatting
     const result = await pool.query(
       `SELECT 
         c.id,
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
         c.diff_total_lines,
         c.files_changed_count,
         c.threadlines_count,
-        c.created_at,
+        TO_CHAR(c.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at_iso,
         COUNT(cr.id) FILTER (WHERE cr.status = 'compliant') as compliant_count,
         COUNT(cr.id) FILTER (WHERE cr.status = 'attention') as attention_count,
         COUNT(cr.id) FILTER (WHERE cr.status = 'not_relevant') as not_relevant_count
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
           attention: parseInt(row.attention_count) || 0,
           notRelevant: parseInt(row.not_relevant_count) || 0
         },
-        createdAt: row.created_at
+        createdAt: row.created_at_iso // Already formatted as ISO 8601 with 'Z' from PostgreSQL
       }))
     });
   } catch (error: any) {
