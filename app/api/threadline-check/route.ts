@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processThreadlines } from '../../lib/processors/expert';
 import { getPool } from '../../lib/db';
 import { hashApiKey } from '../../lib/auth/api-key';
+import { storeCheck } from '../../lib/audit/store-check';
 
 export interface ReviewRequest {
   threadlines: Array<{
@@ -168,6 +169,7 @@ export async function POST(req: NextRequest) {
     const serverAccount = process.env.THREADLINE_ACCOUNT;
     
     let isAuthenticated = false;
+    let userId: string | undefined = undefined;
     
     if (serverApiKey && serverAccount) {
       // Backward compatibility: Check if env vars match
@@ -182,7 +184,7 @@ export async function POST(req: NextRequest) {
       try {
         const pool = getPool();
         const result = await pool.query(
-          `SELECT api_key_hash FROM users WHERE email = $1 AND api_key_hash IS NOT NULL`,
+          `SELECT id, api_key_hash FROM users WHERE email = $1 AND api_key_hash IS NOT NULL`,
           [request.account]
         );
         
@@ -192,6 +194,7 @@ export async function POST(req: NextRequest) {
           
           if (providedHash === storedHash) {
             isAuthenticated = true;
+            userId = result.rows[0].id;
             console.log('   ✓ Authenticated via database (user API key)');
           }
         }
@@ -221,6 +224,29 @@ export async function POST(req: NextRequest) {
     const result = await processThreadlines({ ...request, apiKey: openaiApiKey });
 
     console.log(`✅ Processed: ${result.results.length} results, ${result.metadata.completed} completed, ${result.metadata.timedOut} timed out, ${result.metadata.errors} errors`);
+
+    // Determine review context type
+    // Note: We infer from available data - could be enhanced with explicit context field in request
+    let reviewContext = 'local';
+    if (request.repoName && request.branchName) {
+      reviewContext = 'branch'; // Most common case - branch review
+    }
+    // TODO: Could add explicit review_context field to request for more precise tracking
+
+    // Store check in audit database (non-blocking - don't fail request if this fails)
+    try {
+      await storeCheck({
+        request,
+        result,
+        diffStats,
+        contextStats,
+        reviewContext,
+        userId
+      });
+    } catch (auditError: any) {
+      console.error('⚠️  Failed to store check in audit database (non-fatal):', auditError);
+      // Continue - don't fail the request if audit storage fails
+    }
 
     return NextResponse.json(result);
   } catch (error: any) {
