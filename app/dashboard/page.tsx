@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface Check {
   id: string;
@@ -137,10 +138,13 @@ export default function DashboardPage() {
                   {checks.map((check) => (
                     <tr
                       key={check.id}
-                      className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+                      className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/dashboard/${check.id}`)}
                     >
                       <td className="py-3 px-4 text-sm text-slate-300">
-                        {formatDate(check.createdAt)}
+                        <Link href={`/dashboard/${check.id}`} className="hover:text-white transition-colors">
+                          {formatDate(check.createdAt)}
+                        </Link>
                       </td>
                       <td className="py-3 px-4 text-sm text-white font-mono">
                         {check.repoName || <span className="text-slate-500">—</span>}
