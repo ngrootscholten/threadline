@@ -38,7 +38,6 @@ interface CheckDetail {
       id: string;
       status: string;
       reasoning: string | null;
-      lineReferences: number[] | null;
       fileReferences: string[] | null;
     } | null;
   }>;
@@ -287,9 +286,6 @@ export default function CheckDetailPage() {
                             {threadline.result.fileReferences.map((file, idx) => (
                               <li key={idx} className="font-mono text-sm">
                                 {file}
-                                {threadline.result?.lineReferences?.[idx] && (
-                                  <span className="text-slate-500">:{threadline.result.lineReferences[idx]}</span>
-                                )}
                               </li>
                             ))}
                           </ul>

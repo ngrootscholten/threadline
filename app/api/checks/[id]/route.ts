@@ -77,7 +77,6 @@ export async function GET(
         cr.id as result_id,
         cr.status,
         cr.reasoning,
-        cr.line_references,
         cr.file_references
       FROM check_threadlines ct
       LEFT JOIN check_results cr ON ct.id = cr.check_threadline_id
@@ -99,7 +98,6 @@ export async function GET(
         id: row.result_id,
         status: row.status,
         reasoning: row.reasoning,
-        lineReferences: row.line_references,
         fileReferences: row.file_references
       } : null
     }));

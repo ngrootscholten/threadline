@@ -2,6 +2,7 @@ import { getPool } from '../db';
 import { ReviewRequest } from '../../api/threadline-check/route';
 import { ProcessThreadlinesResponse } from '../processors/expert';
 import { ExpertResult } from '../types/result';
+import { ProcessThreadlineResult } from '../processors/single-expert';
 
 interface StoreCheckParams {
   request: ReviewRequest;
@@ -89,14 +90,17 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
 
     // 3. Insert threadlines and their results
     // Create a map of expertId to result for quick lookup
-    const resultMap = new Map<string, ExpertResult>();
+    const resultMap = new Map<string, ProcessThreadlineResult | ExpertResult>();
     result.results.forEach(r => {
       resultMap.set(r.expertId, r);
     });
 
     for (const threadline of request.threadlines) {
-      // Insert threadline
-      const threadlineResult = await pool.query(
+      const threadlineResult = resultMap.get(threadline.id);
+      const isProcessThreadlineResult = threadlineResult && 'relevantFiles' in threadlineResult;
+      
+      // Insert threadline with filtering metadata
+      const threadlineInsertResult = await pool.query(
         `INSERT INTO check_threadlines (
           check_id,
           threadline_id,
@@ -104,8 +108,11 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
           threadline_patterns,
           threadline_content,
           context_files,
-          context_content
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          context_content,
+          relevant_files,
+          filtered_diff,
+          files_in_filtered_diff
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id`,
         [
           checkId,
@@ -114,29 +121,29 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
           JSON.stringify(threadline.patterns),
           threadline.content,
           threadline.contextFiles ? JSON.stringify(threadline.contextFiles) : null,
-          threadline.contextContent ? JSON.stringify(threadline.contextContent) : null
+          threadline.contextContent ? JSON.stringify(threadline.contextContent) : null,
+          isProcessThreadlineResult ? JSON.stringify(threadlineResult.relevantFiles) : null,
+          isProcessThreadlineResult ? threadlineResult.filteredDiff : null,
+          isProcessThreadlineResult ? JSON.stringify(threadlineResult.filesInFilteredDiff) : null
         ]
       );
 
-      const checkThreadlineId = threadlineResult.rows[0].id;
+      const checkThreadlineId = threadlineInsertResult.rows[0].id;
 
       // Insert result for this threadline
-      const expertResult = resultMap.get(threadline.id);
-      if (expertResult) {
+      if (threadlineResult) {
         await pool.query(
           `INSERT INTO check_results (
             check_threadline_id,
             status,
             reasoning,
-            line_references,
             file_references
-          ) VALUES ($1, $2, $3, $4, $5)`,
+          ) VALUES ($1, $2, $3, $4)`,
           [
             checkThreadlineId,
-            expertResult.status,
-            expertResult.reasoning || null,
-            expertResult.lineReferences ? JSON.stringify(expertResult.lineReferences) : null,
-            expertResult.fileReferences ? JSON.stringify(expertResult.fileReferences) : null
+            threadlineResult.status,
+            threadlineResult.reasoning || null,
+            threadlineResult.fileReferences ? JSON.stringify(threadlineResult.fileReferences) : null
           ]
         );
       }

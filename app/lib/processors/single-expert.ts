@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { ExpertResult } from '../types/result';
 import { buildPrompt } from '../llm/prompt-builder';
+import { filterDiffByFiles, extractFilesFromDiff } from '../utils/diff-filter';
 
 export interface ThreadlineInput {
   id: string;
@@ -11,34 +12,50 @@ export interface ThreadlineInput {
   contextContent?: Record<string, string>;
 }
 
+export interface ProcessThreadlineResult extends ExpertResult {
+  relevantFiles: string[]; // Files that matched threadline patterns
+  filteredDiff: string; // The actual diff sent to LLM (filtered to only relevant files)
+  filesInFilteredDiff: string[]; // Files actually present in the filtered diff sent to LLM
+}
+
 export async function processThreadline(
   threadline: ThreadlineInput,
   diff: string,
   files: string[],
   apiKey: string
-): Promise<ExpertResult> {
+): Promise<ProcessThreadlineResult> {
   const openai = new OpenAI({ apiKey });
 
   // Filter files that match threadline patterns
-  const matchingFiles = files.filter(file => 
+  const relevantFiles = files.filter(file => 
     threadline.patterns.some(pattern => matchesPattern(file, pattern))
   );
 
   // If no files match, return not_relevant
-  if (matchingFiles.length === 0) {
+  if (relevantFiles.length === 0) {
     console.log(`   ⚠️  ${threadline.id}: No files matched patterns ${threadline.patterns.join(', ')}`);
     console.log(`      Files checked: ${files.slice(0, 5).join(', ')}${files.length > 5 ? '...' : ''}`);
     return {
       expertId: threadline.id,
       status: 'not_relevant',
-      reasoning: `No files match threadline patterns: ${threadline.patterns.join(', ')}`
+      reasoning: `No files match threadline patterns: ${threadline.patterns.join(', ')}`,
+      fileReferences: [],
+      relevantFiles: [],
+      filteredDiff: '',
+      filesInFilteredDiff: []
     };
   }
 
-  // Build prompt
-  const prompt = buildPrompt(threadline, diff, matchingFiles);
+  // Filter diff to only include relevant files
+  const filteredDiff = filterDiffByFiles(diff, relevantFiles);
   
-  console.log(`   📝 Processing ${threadline.id}: ${matchingFiles.length} matching files`);
+  // Extract files actually present in the filtered diff
+  const filesInFilteredDiff = extractFilesFromDiff(filteredDiff);
+
+  // Build prompt with filtered diff
+  const prompt = buildPrompt(threadline, filteredDiff, filesInFilteredDiff);
+  
+  console.log(`   📝 Processing ${threadline.id}: ${relevantFiles.length} relevant files, ${filesInFilteredDiff.length} files in filtered diff`);
 
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
   console.log(`   🤖 Calling LLM (${model}) for ${threadline.id}...`);
@@ -47,7 +64,7 @@ export async function processThreadline(
     messages: [
       {
         role: 'system',
-        content: 'You are a code quality checker. Return only valid JSON, no other text.'
+        content: 'You are a code quality checker. Analyze code changes against the threadline guidelines. Be precise - only flag actual violations. Return only valid JSON, no other text.'
       },
       {
         role: 'user',
@@ -69,23 +86,37 @@ export async function processThreadline(
   
   console.log(`   ✅ Parsed: status=${parsed.status}, reasoning=${parsed.reasoning?.substring(0, 100)}...`);
   
-  // Extract file references from line references if possible
-  const fileReferences: string[] = [];
-  if (parsed.line_references && Array.isArray(parsed.line_references)) {
-    // Try to match line numbers to files (simplified - would need more sophisticated parsing)
-    matchingFiles.forEach(file => {
-      if (diff.includes(file)) {
-        fileReferences.push(file);
-      }
-    });
+  // Extract file references - rely entirely on LLM to provide them
+  let fileReferences: string[] = [];
+  
+  if (parsed.file_references && Array.isArray(parsed.file_references) && parsed.file_references.length > 0) {
+    // LLM provided file references - validate they're in filesInFilteredDiff
+    fileReferences = parsed.file_references.filter((file: string) => filesInFilteredDiff.includes(file));
+    if (parsed.file_references.length !== fileReferences.length) {
+      console.log(`   ⚠️  Warning: LLM provided ${parsed.file_references.length} file references, but only ${fileReferences.length} match the files sent to LLM`);
+    }
+  } else {
+    // LLM did not provide file_references
+    const status = parsed.status || 'not_relevant';
+    
+    if (status === 'attention') {
+      // This is a problem - we have violations but don't know which files
+      console.error(`   ❌ Error: LLM returned "attention" status but no file_references for threadline ${threadline.id}`);
+      console.error(`   Cannot accurately report violations without file references. This may indicate a prompt/LLM issue.`);
+      // Return empty file references - better than guessing
+      fileReferences = [];
+    }
+    // For "compliant" or "not_relevant" status, file references are optional
   }
 
   return {
     expertId: threadline.id,
     status: parsed.status || 'not_relevant',
     reasoning: parsed.reasoning,
-    lineReferences: parsed.line_references,
-    fileReferences: fileReferences.length > 0 ? fileReferences : matchingFiles
+    fileReferences: fileReferences,
+    relevantFiles: relevantFiles,
+    filteredDiff: filteredDiff,
+    filesInFilteredDiff: filesInFilteredDiff
   };
 }
 
