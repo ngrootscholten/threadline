@@ -81,21 +81,39 @@ export function filterDiffByFiles(diff: string, filesToInclude: string[]): strin
  * @returns Array of file paths found in the diff
  */
 export function extractFilesFromDiff(diff: string): string[] {
-  if (!diff || diff.trim() === '') {
-    return [];
-  }
-
   const files = new Set<string>();
   const lines = diff.split('\n');
 
   for (const line of lines) {
     const diffHeaderMatch = line.match(/^diff --git a\/(.+?) b\/(.+?)$/);
     if (diffHeaderMatch) {
-      // Use the 'b' path (new file) as the canonical path
-      files.add(diffHeaderMatch[2]);
+      files.add(diffHeaderMatch[2]); // Use 'b' path
     }
   }
-
   return Array.from(files);
 }
 
+/**
+ * Filters hunk content to show only changed lines (removes context lines).
+ * Context lines are lines that start with a space (unchanged code).
+ * 
+ * @param hunkContent - The content of a hunk (array of lines)
+ * @returns Filtered hunk content with only changed lines (+ and -)
+ */
+export function filterHunkToChanges(hunkContent: string[]): string[] {
+  return hunkContent.filter(line => {
+    // Keep lines that start with + or - (actual changes)
+    // Remove lines that start with space (context/unchanged code)
+    return line.startsWith('+') || line.startsWith('-');
+  });
+}
+
+/**
+ * Checks if a hunk has any actual changes (not just context).
+ * 
+ * @param hunkContent - The content of a hunk (array of lines)
+ * @returns True if the hunk contains actual changes
+ */
+export function hasChanges(hunkContent: string[]): boolean {
+  return hunkContent.some(line => line.startsWith('+') || line.startsWith('-'));
+}

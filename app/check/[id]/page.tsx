@@ -4,16 +4,17 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { Diff, Hunk, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
 import ReactMarkdown from "react-markdown";
+import { DiffViewer } from "../../components/DiffViewer";
 
-interface CheckDetail {
+interface CheckSummary {
   id: string;
   repoName: string | null;
   branchName: string | null;
   commitSha: string | null;
   reviewContext: string | null;
+  environment: string | null;
   diffStats: {
     added: number;
     removed: number;
@@ -24,23 +25,41 @@ interface CheckDetail {
   contextFilesTotalLines: number;
   threadlinesCount: number;
   createdAt: string;
-  diff: string | null;
-  diffFormat: string;
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    notRelevant: number;
+    allPassed: boolean;
+  };
   threadlines: Array<{
     checkThreadlineId: string;
     threadlineId: string;
     version: string;
-    patterns: string[];
-    content: string;
-    contextFiles: any;
-    contextContent: any;
-    result: {
-      id: string;
-      status: string;
-      reasoning: string | null;
-      fileReferences: string[] | null;
-    } | null;
+    status: string;
+    resultId: string | null;
+    hasViolations: boolean;
+    fileReferences: string[];
   }>;
+}
+
+interface ThreadlineDetail {
+  checkThreadlineId: string;
+  threadlineId: string;
+  version: string;
+  patterns: string[];
+  content: string;
+  contextFiles: any;
+  contextContent: any;
+  relevantFiles: string[];
+  filteredDiff: string | null;
+  filesInFilteredDiff: string[];
+  result: {
+    id: string;
+    status: string;
+    reasoning: string | null;
+    fileReferences: string[] | null;
+  } | null;
 }
 
 export default function CheckDetailPage() {
@@ -49,7 +68,10 @@ export default function CheckDetailPage() {
   const params = useParams();
   const checkId = params.id as string;
 
-  const [check, setCheck] = useState<CheckDetail | null>(null);
+  const [check, setCheck] = useState<CheckSummary | null>(null);
+  const [expandedThreadlines, setExpandedThreadlines] = useState<Set<string>>(new Set());
+  const [threadlineDetails, setThreadlineDetails] = useState<Map<string, ThreadlineDetail>>(new Map());
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +81,7 @@ export default function CheckDetailPage() {
     } else if (status === "unauthenticated") {
       router.push("/auth/signin");
     }
-  }, [status, checkId]); // Only depend on status and checkId, not session object
+  }, [status, checkId]);
 
   const fetchCheck = async () => {
     try {
@@ -82,6 +104,46 @@ export default function CheckDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchThreadlineDetail = async (threadlineId: string) => {
+    if (threadlineDetails.has(threadlineId)) {
+      return; // Already loaded
+    }
+
+    setLoadingDetails(prev => new Set(prev).add(threadlineId));
+
+    try {
+      const response = await fetch(`/api/checks/${checkId}/threadlines/${threadlineId}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch threadline details");
+      }
+
+      const data = await response.json();
+      setThreadlineDetails(prev => new Map(prev).set(threadlineId, data.threadline));
+    } catch (err: any) {
+      console.error(`Failed to load threadline ${threadlineId}:`, err);
+    } finally {
+      setLoadingDetails(prev => {
+        const next = new Set(prev);
+        next.delete(threadlineId);
+        return next;
+      });
+    }
+  };
+
+  const toggleThreadline = (threadlineId: string) => {
+    const newExpanded = new Set(expandedThreadlines);
+    if (newExpanded.has(threadlineId)) {
+      newExpanded.delete(threadlineId);
+    } else {
+      newExpanded.add(threadlineId);
+      fetchThreadlineDetail(threadlineId);
+    }
+    setExpandedThreadlines(newExpanded);
   };
 
   if (status === "loading" || loading) {
@@ -118,8 +180,6 @@ export default function CheckDetailPage() {
   }
 
   const formatDate = (dateString: string) => {
-    // dateString is now ISO 8601 with 'Z' (UTC indicator) from API
-    // JavaScript Date will correctly parse it as UTC and convert to local time
     const date = new Date(dateString);
     return date.toLocaleString(undefined, {
       month: "long",
@@ -133,32 +193,39 @@ export default function CheckDetailPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "compliant":
-        return "text-green-400";
+        return "bg-green-500/20 text-green-400 border-green-500/30";
       case "attention":
-        return "text-yellow-400";
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       case "not_relevant":
-        return "text-slate-400";
+        return "bg-slate-500/20 text-slate-400 border-slate-500/30";
       default:
-        return "text-slate-400";
+        return "bg-slate-500/20 text-slate-400 border-slate-500/30";
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "compliant":
-        return "✓";
-      case "attention":
-        return "⚠";
-      case "not_relevant":
-        return "—";
-      default:
-        return "?";
-    }
+  const getEnvironmentBadge = (env: string | null) => {
+    if (!env) return null;
+    
+    const colors: Record<string, string> = {
+      vercel: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      github: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+      gitlab: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      local: 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+    };
+    
+    const color = colors[env] || 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+    
+    return (
+      <span className={`px-2 py-1 rounded text-xs font-medium border ${color}`}>
+        {env}
+      </span>
+    );
   };
+
 
   return (
     <main className="min-h-screen">
-      <section className="max-w-7xl mx-auto px-6 py-24">
+      <section className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-6">
           <Link href="/dashboard" className="text-green-400 hover:text-green-300 transition-colors">
             ← Back to Dashboard
@@ -166,203 +233,234 @@ export default function CheckDetailPage() {
         </div>
 
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 md:p-12">
-          {/* Header */}
+          {/* Summary Section */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-4 text-white">Check Details</h1>
-            <p className="text-slate-400">{formatDate(check.createdAt)}</p>
-          </div>
+            <h1 className="text-4xl font-bold mb-4 text-white">Check Summary</h1>
+            <p className="text-slate-400 mb-6">{formatDate(check.createdAt)}</p>
 
-          {/* Metadata */}
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-400 mb-2">Repository</h2>
-              <p className="text-white font-mono">{check.repoName || <span className="text-slate-500">—</span>}</p>
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-400 mb-2">Branch</h2>
-              <p className="text-white font-mono">{check.branchName || <span className="text-slate-500">—</span>}</p>
-            </div>
-            {check.commitSha && (
+            {/* Enhanced Statistics Panel with Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 p-6 bg-slate-950/50 rounded-lg border border-slate-800 mb-6">
               <div>
-                <h2 className="text-sm font-semibold text-slate-400 mb-2">Commit</h2>
-                <p className="text-white font-mono text-sm">{check.commitSha.substring(0, 7)}</p>
+                <p className="text-sm text-slate-400">Failed</p>
+                <p className="text-2xl font-bold text-yellow-400">{check.summary.failed}</p>
               </div>
-            )}
-            <div>
-              <h2 className="text-sm font-semibold text-slate-400 mb-2">Review Context</h2>
-              <p className="text-white">{check.reviewContext || <span className="text-slate-500">—</span>}</p>
+              <div>
+                <p className="text-sm text-slate-400">Passed</p>
+                <p className="text-2xl font-bold text-green-400">{check.summary.passed}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Not Relevant</p>
+                <p className="text-2xl font-bold text-slate-400">{check.summary.notRelevant}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Total</p>
+                <p className="text-2xl font-bold text-white">{check.summary.total}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Files Changed</p>
+                <p className="text-2xl font-bold text-white">{check.filesChangedCount}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Lines Changed</p>
+                <p className="text-2xl font-bold text-white">
+                  {check.diffStats.total > 0 
+                    ? `${check.diffStats.added > 0 ? `+${check.diffStats.added}` : ''}${check.diffStats.removed > 0 ? `-${check.diffStats.removed}` : ''}`
+                    : '0'
+                  }
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Context Files</p>
+                <p className="text-2xl font-bold text-white">{check.contextFilesCount}</p>
+              </div>
+            </div>
+
+            {/* Metadata Grid */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-400 mb-2">Repository</h2>
+                <p className="text-white font-mono text-sm">
+                  {check.repoName ? check.repoName.replace("https://github.com/", "").replace(".git", "") : <span className="text-slate-500">—</span>}
+                </p>
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-400 mb-2">Branch</h2>
+                <p className="text-white font-mono">{check.branchName || <span className="text-slate-500">—</span>}</p>
+              </div>
+              {check.commitSha && (
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-400 mb-2">Commit</h2>
+                  <p className="text-white font-mono text-sm">{check.commitSha.substring(0, 7)}</p>
+                </div>
+              )}
+              <div>
+                <h2 className="text-sm font-semibold text-slate-400 mb-2">Review Context</h2>
+                <p className="text-white">{check.reviewContext || <span className="text-slate-500">—</span>}</p>
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-400 mb-2">Environment</h2>
+                {getEnvironmentBadge(check.environment) || <span className="text-slate-500">—</span>}
+              </div>
             </div>
           </div>
 
-          {/* Statistics */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8 p-4 bg-slate-950/50 rounded-lg border border-slate-800">
-            <div>
-              <p className="text-sm text-slate-400">Files Changed</p>
-              <p className="text-2xl font-bold text-white">{check.filesChangedCount}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Lines Changed</p>
-              <p className="text-2xl font-bold text-white">
-                {check.diffStats.total > 0 
-                  ? `${check.diffStats.added > 0 ? `+${check.diffStats.added}` : ''}${check.diffStats.removed > 0 ? `-${check.diffStats.removed}` : ''}`
-                  : '0'
-                }
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Threadlines</p>
-              <p className="text-2xl font-bold text-white">{check.threadlinesCount}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Context Files</p>
-              <p className="text-2xl font-bold text-white">{check.contextFilesCount}</p>
-            </div>
-          </div>
+          {/* Threadlines List */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold text-white mb-4">Threadlines ({check.threadlines.length})</h2>
+            {check.threadlines.map((threadline) => {
+              const isExpanded = expandedThreadlines.has(threadline.threadlineId);
+              const detail = threadlineDetails.get(threadline.threadlineId);
+              const isLoading = loadingDetails.has(threadline.threadlineId);
 
-          {/* Threadlines and Results */}
-          <div className="space-y-6 mb-8">
-            <h2 className="text-2xl font-semibold text-white">Threadline Results</h2>
-            {check.threadlines.map((threadline) => (
-              <div
-                key={threadline.checkThreadlineId}
-                className="border border-slate-800 rounded-lg bg-slate-950/30 overflow-hidden"
-              >
-                {/* Summary - Always Visible */}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        {threadline.threadlineId}
-                      </h3>
-                      <p className="text-sm text-slate-400">Version {threadline.version}</p>
-                      <p className="text-sm text-slate-400 mt-1">
-                        Patterns: {Array.isArray(threadline.patterns) ? threadline.patterns.join(", ") : "—"}
-                      </p>
+              return (
+                <div
+                  key={threadline.checkThreadlineId}
+                  className="border border-slate-800 rounded-lg bg-slate-950/30 overflow-hidden"
+                >
+                  {/* Collapsed Summary */}
+                  <button
+                    onClick={() => toggleThreadline(threadline.threadlineId)}
+                    className="w-full p-4 text-left hover:bg-slate-800/50 transition-colors flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(threadline.status)}`}>
+                        {threadline.status}
+                      </span>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">
+                          {threadline.threadlineId}
+                        </h3>
+                        <p className="text-sm text-slate-400">Version {threadline.version}</p>
+                      </div>
                     </div>
-                    {threadline.result && (
-                      <div className={`text-lg font-semibold ${getStatusColor(threadline.result.status)}`}>
-                        {getStatusIcon(threadline.result.status)} {threadline.result.status}
-                      </div>
-                    )}
-                  </div>
+                    <svg
+                      className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
 
-                  {/* Expandable Threadline Content */}
-                  {threadline.content && (
-                    <details className="mt-4 group">
-                      <summary className="cursor-pointer px-3 py-2 -mx-3 -my-2 rounded hover:bg-slate-800/50 transition-colors flex items-center justify-between select-none">
-                        <span className="text-sm text-slate-400 group-open:text-slate-300">Guidelines</span>
-                        <svg 
-                          className="w-5 h-5 text-slate-500 group-open:text-slate-400 group-open:rotate-180 transition-transform" 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </summary>
-                      <div className="mt-3 pt-3 border-t border-slate-800">
-                        <div className="prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown className="text-slate-300">
-                            {threadline.content}
-                          </ReactMarkdown>
-                        </div>
-                      </div>
-                    </details>
-                  )}
-
-                  {/* Result Details */}
-                  {threadline.result && (
-                    <div className="mt-4 space-y-2">
-                      {threadline.result.reasoning && (
-                        <div>
-                          <p className="text-sm font-semibold text-slate-400 mb-1">Reasoning</p>
-                          <p className="text-slate-300 whitespace-pre-wrap">{threadline.result.reasoning}</p>
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                    <div className="border-t border-slate-800 p-6">
+                      {isLoading && (
+                        <div className="text-center py-8">
+                          <p className="text-slate-400">Loading threadline details...</p>
                         </div>
                       )}
-                      {threadline.result.fileReferences && threadline.result.fileReferences.length > 0 && (
-                        <div>
-                          <p className="text-sm font-semibold text-slate-400 mb-1">Files</p>
-                          <ul className="list-disc list-inside text-slate-300">
-                            {threadline.result.fileReferences.map((file, idx) => (
-                              <li key={idx} className="font-mono text-sm">
-                                {file}
-                              </li>
-                            ))}
-                          </ul>
+                      {!isLoading && detail && (
+                        <div className="space-y-6">
+                          {/* Result Details - Most Important */}
+                          {detail.result ? (
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-400 mb-2">Result</h4>
+                              <div className={`p-4 rounded-lg border ${getStatusColor(detail.result.status)}`}>
+                                <p className="text-sm font-semibold mb-2">
+                                  Status: {detail.result.status}
+                                </p>
+                                {detail.result.reasoning && (
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-400 mb-1">Reasoning</p>
+                                    <p className="text-slate-300 whitespace-pre-wrap text-sm">
+                                      {detail.result.reasoning}
+                                    </p>
+                                  </div>
+                                )}
+                                {detail.result.fileReferences && detail.result.fileReferences.length > 0 && (
+                                  <div className="mt-3">
+                                    <p className="text-sm font-semibold text-slate-400 mb-1">Files with Violations</p>
+                                    <ul className="list-disc list-inside text-slate-300">
+                                      {detail.result.fileReferences.map((file: string, idx: number) => (
+                                        <li key={idx} className="font-mono text-sm">
+                                          {file}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-slate-500 text-sm">
+                              No result available
+                            </div>
+                          )}
+
+                          {/* Files Sent to LLM */}
+                          {detail.filesInFilteredDiff && detail.filesInFilteredDiff.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-400 mb-2">
+                                Files Sent to LLM ({detail.filesInFilteredDiff.length})
+                              </h4>
+                              <ul className="list-disc list-inside text-slate-300 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+                                {detail.filesInFilteredDiff.map((file: string, idx: number) => (
+                                  <li key={idx} className="font-mono text-sm">
+                                    {file}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Context Files (renamed from Relevant Files) */}
+                          {detail.relevantFiles && detail.relevantFiles.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-400 mb-2">
+                                Context Files ({detail.relevantFiles.length})
+                              </h4>
+                              <ul className="list-disc list-inside text-slate-300 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+                                {detail.relevantFiles.map((file: string, idx: number) => (
+                                  <li key={idx} className="font-mono text-sm">
+                                    {file}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Filtered Diff - Collapsed by default */}
+                          {detail.filteredDiff && (
+                            <details className="group">
+                              <summary className="cursor-pointer text-sm font-semibold text-slate-400 mb-2 hover:text-slate-300 transition-colors">
+                                Filtered Diff
+                              </summary>
+                              <div className="mt-2 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                                <DiffViewer diff={detail.filteredDiff} />
+                              </div>
+                            </details>
+                          )}
+
+                          {/* Threadline Guidelines - Collapsed by default */}
+                          {detail.content && (
+                            <details className="group">
+                              <summary className="cursor-pointer text-sm font-semibold text-slate-400 mb-2 hover:text-slate-300 transition-colors">
+                                Threadline Guidelines
+                              </summary>
+                              <div className="mt-2 prose prose-invert prose-sm max-w-none bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+                                <ReactMarkdown className="text-slate-300">
+                                  {detail.content}
+                                </ReactMarkdown>
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      )}
+                      {!isLoading && !detail && (
+                        <div className="text-red-400 text-sm">
+                          Failed to load threadline details
                         </div>
                       )}
                     </div>
                   )}
-
-                  {!threadline.result && (
-                    <p className="text-slate-500 text-sm mt-4">No result available</p>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-
-          {/* Diff Content */}
-          {check.diff && (() => {
-            try {
-              const files = parseDiff(check.diff);
-              if (files.length === 0) return null;
-              
-              return (
-                <div>
-                  <h2 className="text-2xl font-semibold text-white mb-4">
-                    Diff ({files.length} {files.length === 1 ? 'file' : 'files'})
-                  </h2>
-                  <div className="space-y-4">
-                    {files.map((file, fileIdx) => (
-                      <details key={fileIdx} open className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden group">
-                        <summary className="bg-slate-800 px-4 py-2 cursor-pointer hover:bg-slate-750 select-none flex items-center gap-2">
-                          <span className="text-slate-400 group-open:rotate-90 transition-transform">▶</span>
-                          <span className="text-sm font-mono text-slate-300">
-                            {file.newPath || file.oldPath || 'Unknown file'}
-                          </span>
-                        </summary>
-                        <div className="p-4 overflow-x-auto">
-                          <Diff
-                            viewType="unified"
-                            diffType={file.type}
-                            hunks={file.hunks}
-                          >
-                            {(hunks) =>
-                              hunks.map((hunk, idx) => (
-                                <Hunk key={idx} hunk={hunk} />
-                              ))
-                            }
-                          </Diff>
-                        </div>
-                      </details>
-                    ))}
-                  </div>
-                </div>
-              );
-            } catch (error) {
-              console.error('Failed to parse diff:', error);
-              return (
-                <div>
-                  <h2 className="text-2xl font-semibold text-white mb-4">Diff</h2>
-                  <div className="bg-red-950 border border-red-800 rounded-lg p-4 mb-4">
-                    <p className="text-red-400 font-semibold">
-                      ⚠️ Parsing diff failed: {error instanceof Error ? error.message : 'Unknown error'}
-                    </p>
-                  </div>
-                  <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 overflow-x-auto">
-                    <p className="text-slate-400 text-sm mb-2">Raw diff content:</p>
-                    <pre className="text-sm text-slate-300 font-mono whitespace-pre-wrap">
-                      {check.diff}
-                    </pre>
-                  </div>
-                </div>
-              );
-            }
-          })()}
         </div>
       </section>
     </main>
   );
 }
-
