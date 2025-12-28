@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         c.diff_lines_added,
         c.diff_lines_removed,
         c.diff_total_lines,
-        c.files_changed_count,
+        c.files_changed_counts,
         c.threadlines_count,
         TO_CHAR(c.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at_iso,
         COUNT(cr.id) FILTER (WHERE cr.status = 'compliant') as compliant_count,
