@@ -5,69 +5,79 @@ export function buildPrompt(
   diff: string,
   matchingFiles: string[]
 ): string {
-  let prompt = `You are a code quality checker focused EXCLUSIVELY on: ${threadline.id}\n\n`;
-  prompt += `CRITICAL: You must ONLY check for violations of THIS SPECIFIC threadline. `;
-  prompt += `Do NOT flag other code quality issues, style problems, or unrelated concerns. `;
-  prompt += `If the code does not violate THIS threadline's specific rules, return "compliant" even if other issues exist.\n\n`;
-  
-  prompt += `Threadline Guidelines:\n${threadline.content}\n\n`;
+  // Build context files section if available
+  const contextFilesSection = threadline.contextContent && Object.keys(threadline.contextContent).length > 0
+    ? `Context Files:\n${Object.entries(threadline.contextContent)
+        .map(([file, content]) => `\n--- ${file} ---\n${content}`)
+        .join('\n')}\n\n`
+    : '';
 
-  // Add context files if available
-  if (threadline.contextContent && Object.keys(threadline.contextContent).length > 0) {
-    prompt += `Context Files:\n`;
-    for (const [file, content] of Object.entries(threadline.contextContent)) {
-      prompt += `\n--- ${file} ---\n${content}\n`;
-    }
-    prompt += `\n`;
-  }
+  return `You are a code quality checker focused EXCLUSIVELY on: ${threadline.id}
 
-  prompt += `Code Changes (Git Diff Format):\n${diff}\n\n`;
-  prompt += `Changed Files:\n${matchingFiles.join('\n')}\n\n`;
+CRITICAL: You must ONLY check for violations of THIS SPECIFIC threadline. Do NOT flag other code quality issues, style problems, or unrelated concerns. If the code does not violate THIS threadline's specific rules, return "compliant" even if other issues exist.
 
-  prompt += `DIFF FORMAT EXPLANATION:\n`;
-  prompt += `- Lines starting with "-" (minus) are DELETIONS - code being removed\n`;
-  prompt += `- Lines starting with "+" (plus) are ADDITIONS - code being added\n`;
-  prompt += `- Lines without prefix are context (unchanged)\n\n`;
+Threadline Guidelines:
+${threadline.content}
 
-  prompt += `Review the code changes AGAINST ONLY THE THREADLINE GUIDELINES ABOVE.\n\n`;
-  prompt += `CRITICAL EVALUATION LOGIC - READ CAREFULLY:\n`;
-  prompt += `1. FIRST PRIORITY: Scan ALL lines starting with "+" (additions) for violations\n`;
-  prompt += `   - If ANY addition line contains a violation → IMMEDIATELY return "attention"\n`;
-  prompt += `   - Additions introduce NEW code - if that new code violates the threadline, it's a problem\n`;
-  prompt += `2. SECOND: Check lines starting with "-" (deletions)\n`;
-  prompt += `   - If a deletion removes a violation → this is a FIX, return "compliant"\n`;
-  prompt += `   - But ONLY if step 1 found NO violations in additions\n`;
-  prompt += `3. DECISION RULE:\n`;
-  prompt += `   - Violations in "+" lines = NEW violations = return "attention"\n`;
-  prompt += `   - Violations only in "-" lines = violations being removed = return "compliant"\n`;
-  prompt += `   - If both "+" and "-" have violations, additions take priority = return "attention"\n\n`;
-  
-  prompt += `CONCRETE EXAMPLES:\n`;
-  prompt += `Example 1: "+ const fruit = 'banana';" (threadline forbids "banana")\n`;
-  prompt += `→ This is an ADDITION with a violation → return "attention"\n\n`;
-  prompt += `Example 2: "- const fruit = 'banana';" (threadline forbids "banana")\n`;
-  prompt += `→ This is a DELETION removing a violation → return "compliant"\n\n`;
-  prompt += `Example 3: "+ const fruit = 'banana';" AND "- const fruit = 'apple';"\n`;
-  prompt += `→ Addition has violation → return "attention" (deletion doesn't matter)\n\n`;
-  
-  prompt += `IMPORTANT:\n`;
-  prompt += `- Additions (lines with "+") are NEW code being added - check these FIRST\n`;
-  prompt += `- If you see a violation in a "+" line, return "attention" immediately\n`;
-  prompt += `- Do NOT say violations are "removed" if they appear in "+" lines - those are NEW violations\n`;
-  prompt += `- Only flag violations of the specific rules defined in this threadline\n`;
-  prompt += `- Ignore all other code quality issues, style problems, or unrelated concerns\n\n`;
-  
-  prompt += `Return JSON only with this exact structure:\n`;
-  prompt += `{\n`;
-  prompt += `  "status": "compliant" | "attention" | "not_relevant",\n`;
-  prompt += `  "reasoning": "brief explanation",\n`;
-  prompt += `  "line_references": [line numbers if attention needed]\n`;
-  prompt += `}\n\n`;
-  prompt += `Status meanings:\n`;
-  prompt += `- "compliant": Code follows THIS threadline's guidelines, no violations found (even if other issues exist)\n`;
-  prompt += `- "attention": Code DIRECTLY violates THIS threadline's specific guidelines\n`;
-  prompt += `- "not_relevant": This threadline doesn't apply to these files/changes (e.g., wrong file type, no matching code patterns)\n`;
-  
-  return prompt;
+${contextFilesSection}Code Changes (Git Diff Format):
+${diff}
+
+Changed Files:
+${matchingFiles.join('\n')}
+
+Review the code changes AGAINST ONLY THE THREADLINE GUIDELINES ABOVE.
+
+YOUR OBJECTIVE:
+Your job is twofold:
+1. Detect new violations being introduced in the code changes
+2. Review whether engineers have successfully addressed earlier violations
+
+This is why it's important to look very carefully at the diff structure. You'll come across diffs that introduce new violations. You will also come across some that address earlier violations. The diff structure should allow you to tell which is which, because lines starting with '-' are removed in favour of lines with '+'.
+
+When analyzing the diff:
+- Lines starting with "+" represent NEW code being added - violations here are NEW violations that need attention
+- Lines starting with "-" represent code being REMOVED - if this removed code contained violations, the engineer is fixing them
+- Each file section starts with "diff --git a/path/to/file b/path/to/file" - use this to identify which file each violation belongs to
+- File sections contain "@@ -start,count +start,count @@" headers indicating line ranges - line numbers after the "+" refer to the NEW file
+- If you see a violation in a "+" line, that's a new violation being introduced
+- If you see a violation only in "-" lines (being removed), that's a fix - the engineer is addressing the violation
+- If both "+" and "-" lines contain violations, the new violations in "+" lines take priority (the fix isn't complete)
+- Some violations may not be line-specific (e.g., file-level patterns, overall structure) - include those in your reasoning as well
+
+CONCRETE EXAMPLES:
+Example 1: "+ const fruit = 'banana';" (threadline forbids "banana")
+→ This is NEW code introducing a violation → return "attention"
+
+Example 2: "- const fruit = 'banana';" (threadline forbids "banana")
+→ This is code being REMOVED that contained a violation → the engineer is fixing it → return "compliant"
+
+Example 3: "+ const fruit = 'banana';" AND "- const fruit = 'apple';"
+→ The addition introduces a new violation → return "attention" (the removal doesn't matter if new violations are introduced)
+
+IMPORTANT:
+- Only flag violations of the specific rules defined in this threadline
+- Ignore all other code quality issues, style problems, or unrelated concerns
+- Focus on understanding the diff structure to distinguish between new violations and fixes
+
+Return JSON only with this exact structure:
+{
+  "status": "compliant" | "attention" | "not_relevant",
+  "reasoning": "explanation with file paths and line numbers embedded in the text (e.g., 'app/api/checks/route.ts:8 - The addition of...')",
+  "file_references": [file paths where violations occur - MUST match files from the diff, include ONLY files with violations]
+}
+
+CRITICAL: For each violation, you MUST:
+1. Embed the file path and line number(s) directly in your reasoning text (e.g., "app/api/checks/route.ts:8 - The addition of 'c.files_changed_counts' violates...")
+2. For line-specific violations, include the line number (e.g., "file.ts:42")
+3. For file-level or pattern violations, just include the file path (e.g., "file.ts")
+4. Include ONLY files that actually contain violations in "file_references" array
+5. Do NOT include files that don't have violations, even if they appear in the diff
+6. The "file_references" array should be a simple list of file paths - no line numbers needed there since they're in the reasoning
+
+Status meanings:
+- "compliant": Code follows THIS threadline's guidelines, no violations found (even if other issues exist)
+- "attention": Code DIRECTLY violates THIS threadline's specific guidelines
+- "not_relevant": This threadline doesn't apply to these files/changes (e.g., wrong file type, no matching code patterns)
+`;
 }
 

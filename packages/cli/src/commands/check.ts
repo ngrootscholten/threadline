@@ -7,7 +7,7 @@ import { getThreadlineApiKey, getThreadlineAccount } from '../utils/config';
 import { detectEnvironment } from '../utils/environment';
 import { detectContext, ReviewContext } from '../utils/context';
 import { collectMetadata } from '../utils/metadata';
-import { getDiffForContext, getContextDescription } from '../utils/git-diff-executor';
+import { getDiffForContext, getDiffForEnvironment, getContextDescription } from '../utils/git-diff-executor';
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
@@ -100,11 +100,25 @@ export async function checkCommand(options: {
       context = { type: 'commit', commitSha: options.commit };
       gitDiff = await getDiffForContext(context, repoRoot, environment);
     } else {
-      // Auto-detect context based on environment
-      context = detectContext(environment);
-      const contextDesc = getContextDescription(context);
-      console.log(chalk.gray(`📝 Collecting git changes for ${contextDesc}...`));
-      gitDiff = await getDiffForContext(context, repoRoot, environment);
+      // Auto-detect: Use environment-specific implementation
+      const envNames: Record<string, string> = {
+        vercel: 'Vercel',
+        github: 'GitHub',
+        gitlab: 'GitLab',
+        local: 'Local'
+      };
+      console.log(chalk.gray(`📝 Collecting git changes for ${envNames[environment]}...`));
+      gitDiff = await getDiffForEnvironment(environment, repoRoot);
+      // Create context for metadata collection
+      if (environment === 'vercel') {
+        context = { type: 'commit', commitSha: process.env.VERCEL_GIT_COMMIT_SHA! };
+      } else if (environment === 'github' || environment === 'gitlab') {
+        // GitHub/GitLab: Detect context for metadata (but diff already obtained)
+        context = detectContext(environment);
+      } else {
+        // Local: Use local context
+        context = { type: 'local' };
+      }
     }
     
     // 3. Collect metadata (commit SHA, commit message, PR title)

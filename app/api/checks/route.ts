@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       WHERE c.user_id = $1
       GROUP BY c.id
       ORDER BY c.created_at DESC
-      LIMIT 10`,
+      LIMIT 40`,
       [session.user.id]
     );
 

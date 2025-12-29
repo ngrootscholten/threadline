@@ -1,4 +1,4 @@
-import { processThreadline } from './single-expert';
+import { processThreadline, ProcessThreadlineResult } from './single-expert';
 import { ExpertResult } from '../types/result';
 
 export interface ProcessThreadlinesRequest {
@@ -16,7 +16,7 @@ export interface ProcessThreadlinesRequest {
 }
 
 export interface ProcessThreadlinesResponse {
-  results: ExpertResult[];
+  results: (ExpertResult | ProcessThreadlineResult)[];
   metadata: {
     totalThreadlines: number;
     completed: number;
@@ -34,12 +34,16 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
   const promises = threadlines.map(threadline => 
     Promise.race([
       processThreadline(threadline, diff, files, apiKey),
-      new Promise<ExpertResult>((resolve) => 
+      new Promise<ProcessThreadlineResult>((resolve) => 
         setTimeout(() => {
           resolve({
             expertId: threadline.id,
             status: 'not_relevant',
-            reasoning: 'Request timed out after 40s'
+            reasoning: 'Request timed out after 40s',
+            fileReferences: [],
+            relevantFiles: [],
+            filteredDiff: '',
+            filesInFilteredDiff: []
           });
         }, EXPERT_TIMEOUT)
       )
@@ -50,7 +54,7 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
   const results = await Promise.allSettled(promises);
 
   // Process results
-  const expertResults: ExpertResult[] = [];
+  const expertResults: (ExpertResult | ProcessThreadlineResult)[] = [];
   let completed = 0;
   let timedOut = 0;
   let errors = 0;
@@ -73,7 +77,11 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
       expertResults.push({
         expertId: threadline.id,
         status: 'not_relevant',
-        reasoning: `Error: ${result.reason?.message || 'Unknown error'}`
+        reasoning: `Error: ${result.reason?.message || 'Unknown error'}`,
+        fileReferences: [],
+        relevantFiles: [],
+        filteredDiff: '',
+        filesInFilteredDiff: []
       });
     }
   }

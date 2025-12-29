@@ -156,6 +156,9 @@ CREATE TABLE IF NOT EXISTS check_threadlines (
   threadline_content TEXT NOT NULL,
   context_files JSONB,
   context_content JSONB,
+  relevant_files JSONB, -- Files that matched threadline patterns
+  filtered_diff TEXT, -- The actual diff sent to LLM (filtered to only relevant files)
+  files_in_filtered_diff JSONB, -- Files actually present in the filtered diff sent to LLM
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -164,7 +167,6 @@ CREATE TABLE IF NOT EXISTS check_results (
   check_threadline_id TEXT NOT NULL REFERENCES check_threadlines(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK (status IN ('compliant', 'attention', 'not_relevant')),
   reasoning TEXT,
-  line_references JSONB,
   file_references JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

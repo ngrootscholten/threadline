@@ -5,46 +5,6 @@ export interface GitDiffResult {
   changedFiles: string[];
 }
 
-/**
- * Get diff for staged/unstaged changes (current behavior)
- */
-export async function getGitDiff(repoRoot: string): Promise<GitDiffResult> {
-  const git: SimpleGit = simpleGit(repoRoot);
-
-  // Check if we're in a git repo
-  const isRepo = await git.checkIsRepo();
-  if (!isRepo) {
-    throw new Error('Not a git repository. Threadline requires a git repository.');
-  }
-
-  // Get diff (staged changes, or unstaged if no staged)
-  const status = await git.status();
-  
-  let diff: string;
-  if (status.staged.length > 0) {
-    // Use staged changes
-    diff = await git.diff(['--cached', '-U200']);
-  } else if (status.files.length > 0) {
-    // Use unstaged changes
-    diff = await git.diff(['-U200']);
-  } else {
-    // No changes
-    return {
-      diff: '',
-      changedFiles: []
-    };
-  }
-
-  // Get list of changed files
-  const changedFiles = status.files
-    .filter(f => f.working_dir !== ' ' || f.index !== ' ')
-    .map(f => f.path);
-
-  return {
-    diff: diff || '',
-    changedFiles
-  };
-}
 
 /**
  * Get diff for a specific branch (all commits vs base branch)
@@ -105,8 +65,9 @@ export async function getBranchDiff(
   // Helper function to detect base branch
   // Returns the branch name to use in git commands (may be local or remote)
   // In CI environments, prioritizes remote refs since local branches often don't exist
+  // Note: Vercel is excluded here because it uses commit context, not branch context
   async function detectBaseBranch(git: SimpleGit, branchName: string): Promise<string> {
-    const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.VERCEL || process.env.GITLAB_CI);
+    const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.GITLAB_CI);
     
     // Strategy 1: Try upstream tracking branch (most reliable if set)
     try {
@@ -162,15 +123,16 @@ export async function getBranchDiff(
       console.log(`[DEBUG] Default branch (refs/remotes/origin/HEAD) not configured: ${error.message || 'not found'}`);
     }
     
-    // Strategy 3: Try common branch names by checking remote refs first (most reliable fallback)
+    // Strategy 3: Try common branch names by checking remote refs first, then local branches
     // This works reliably in CI with fetch-depth: 0, and also works locally
     const commonBases = ['main', 'master', 'develop'];
     for (const candidate of commonBases) {
       if (candidate.toLowerCase() === branchName.toLowerCase()) {
         continue; // Skip if it's the same branch
       }
+      
+      // Try remote ref first
       try {
-        // Always check remote ref first (this is reliable in CI with fetch-depth: 0)
         await git.revparse([`origin/${candidate}`]);
         // In CI, prefer remote refs since local branches often don't exist
         if (isCI) {
@@ -188,7 +150,16 @@ export async function getBranchDiff(
         }
       } catch (error: any) {
         console.log(`[DEBUG] Remote branch 'origin/${candidate}' not found: ${error.message || 'does not exist'}`);
-        // Continue to next candidate
+        
+        // If remote doesn't exist, also try local branch (especially for CI like Vercel)
+        try {
+          await git.revparse([candidate]);
+          console.log(`[DEBUG] Remote 'origin/${candidate}' not available, but local branch '${candidate}' found - using local`);
+          return candidate;
+        } catch (localError: any) {
+          console.log(`[DEBUG] Local branch '${candidate}' also not found: ${localError.message || 'does not exist'}`);
+          // Continue to next candidate
+        }
       }
     }
     
