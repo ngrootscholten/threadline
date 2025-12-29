@@ -105,37 +105,9 @@ export async function getBranchDiff(
   // Helper function to detect base branch
   // Returns the branch name to use in git commands (may be local or remote)
   // In CI environments, prioritizes remote refs since local branches often don't exist
+  // Note: Vercel is excluded here because it uses commit context, not branch context
   async function detectBaseBranch(git: SimpleGit, branchName: string): Promise<string> {
-    const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.VERCEL || process.env.GITLAB_CI);
-    const isVercel = !!process.env.VERCEL;
-    
-    // Vercel-specific strategy: Try multiple approaches with clear logging
-    // Once we know what works, we'll remove the approaches that don't work
-    if (isVercel) {
-      console.log(`[DEBUG] Vercel environment detected - trying Vercel-specific base branch detection for '${branchName}'`);
-      
-    
-      
-      // Strategy 3: Try using local main (maybe Vercel already has it checked out)
-      try {
-        console.log(`[DEBUG] Vercel: Checking if local 'main' branch exists...`);
-        await git.revparse(['main']);
-        console.log(`[DEBUG] Vercel: Found local 'main' branch - using as base`);
-        return 'main';
-      } catch (error: any) {
-        console.log(`[DEBUG] Vercel: Local 'main' branch not found: ${error.message || 'does not exist'}`);
-      }
-      
-   
-      
-      // All Vercel-specific strategies failed - fail loudly
-      throw new Error(
-        `Vercel: Base branch 'main' is not available in the git repository. ` +
-        `Vercel CI does not have the base branch checked out or fetched. ` +
-        `Tried: local 'main' branch. ` +
-        `This is a Vercel CI limitation - the base branch needs to be available for comparison.`
-      );
-    }
+    const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.GITLAB_CI);
     
     // Strategy 1: Try upstream tracking branch (most reliable if set)
     try {

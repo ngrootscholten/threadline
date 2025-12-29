@@ -7,7 +7,7 @@ import { getThreadlineApiKey, getThreadlineAccount } from '../utils/config';
 import { detectEnvironment } from '../utils/environment';
 import { detectContext, ReviewContext } from '../utils/context';
 import { collectMetadata } from '../utils/metadata';
-import { getDiffForContext, getContextDescription } from '../utils/git-diff-executor';
+import { getDiffForContext, getDiffForEnvironment, getContextDescription } from '../utils/git-diff-executor';
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
@@ -100,11 +100,20 @@ export async function checkCommand(options: {
       context = { type: 'commit', commitSha: options.commit };
       gitDiff = await getDiffForContext(context, repoRoot, environment);
     } else {
-      // Auto-detect context based on environment
-      context = detectContext(environment);
-      const contextDesc = getContextDescription(context);
-      console.log(chalk.gray(`📝 Collecting git changes for ${contextDesc}...`));
-      gitDiff = await getDiffForContext(context, repoRoot, environment);
+      // Auto-detect: Use environment-specific implementation
+      if (environment === 'vercel') {
+        // Vercel: Direct environment-based routing (single implementation)
+        console.log(chalk.gray(`📝 Collecting git changes for Vercel commit...`));
+        gitDiff = await getDiffForEnvironment(environment, repoRoot);
+        // Vercel uses commit context, but we don't need to create it explicitly
+        context = { type: 'commit', commitSha: process.env.VERCEL_GIT_COMMIT_SHA! };
+      } else {
+        // Other environments: Use context-based routing (legacy)
+        context = detectContext(environment);
+        const contextDesc = getContextDescription(context);
+        console.log(chalk.gray(`📝 Collecting git changes for ${contextDesc}...`));
+        gitDiff = await getDiffForContext(context, repoRoot, environment);
+      }
     }
     
     // 3. Collect metadata (commit SHA, commit message, PR title)

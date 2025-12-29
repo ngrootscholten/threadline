@@ -62,9 +62,6 @@ export function detectContext(environment: Environment): ReviewContext {
       return detectVercelContext();
     case 'local':
       return { type: 'local' };
-    case 'azure-devops':
-      // Future: return detectAzureDevOpsContext();
-      return { type: 'local' };
     default:
       return { type: 'local' };
   }
@@ -168,17 +165,22 @@ function detectGitLabContext(): ReviewContext {
  * Environment Variables:
  * - Branch: VERCEL_GIT_COMMIT_REF
  * - Commit: VERCEL_GIT_COMMIT_SHA
+ * 
+ * Vercel Limitation:
+ * Vercel performs shallow clones of the repository, typically fetching only the
+ * specific commit being deployed. The git repository in Vercel's build environment
+ * does not contain the full git history or remote branch references (e.g., origin/main).
+ * This means branch-based diff operations (comparing feature branch against base branch)
+ * are not possible because the base branch refs are not available in the repository.
+ * 
+ * Solution:
+ * We hardcode commit context for Vercel, using VERCEL_GIT_COMMIT_SHA to get a
+ * commit-based diff (comparing the commit against its parent). This works within
+ * Vercel's constraints since we only need the commit SHA, not branch references.
  */
 function detectVercelContext(): ReviewContext {
-  // 1. Check for branch context
-  if (process.env.VERCEL_GIT_COMMIT_REF) {
-    return {
-      type: 'branch',
-      branchName: process.env.VERCEL_GIT_COMMIT_REF
-    };
-  }
-  
-  // 2. Check for commit context
+  // Hardcode commit context for Vercel due to shallow clone limitations
+  // Vercel's git repository doesn't have base branch refs available
   if (process.env.VERCEL_GIT_COMMIT_SHA) {
     return {
       type: 'commit',
@@ -186,7 +188,7 @@ function detectVercelContext(): ReviewContext {
     };
   }
   
-  // 3. Fallback to local
+  // Fallback to local
   return { type: 'local' };
 }
 
