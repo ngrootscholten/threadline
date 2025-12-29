@@ -107,6 +107,35 @@ export async function getBranchDiff(
   // In CI environments, prioritizes remote refs since local branches often don't exist
   async function detectBaseBranch(git: SimpleGit, branchName: string): Promise<string> {
     const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.VERCEL || process.env.GITLAB_CI);
+    const isVercel = !!process.env.VERCEL;
+    
+    // Vercel-specific strategy: Try multiple approaches with clear logging
+    // Once we know what works, we'll remove the approaches that don't work
+    if (isVercel) {
+      console.log(`[DEBUG] Vercel environment detected - trying Vercel-specific base branch detection for '${branchName}'`);
+      
+    
+      
+      // Strategy 3: Try using local main (maybe Vercel already has it checked out)
+      try {
+        console.log(`[DEBUG] Vercel: Checking if local 'main' branch exists...`);
+        await git.revparse(['main']);
+        console.log(`[DEBUG] Vercel: Found local 'main' branch - using as base`);
+        return 'main';
+      } catch (error: any) {
+        console.log(`[DEBUG] Vercel: Local 'main' branch not found: ${error.message || 'does not exist'}`);
+      }
+      
+   
+      
+      // All Vercel-specific strategies failed - fail loudly
+      throw new Error(
+        `Vercel: Base branch 'main' is not available in the git repository. ` +
+        `Vercel CI does not have the base branch checked out or fetched. ` +
+        `Tried: local 'main' branch. ` +
+        `This is a Vercel CI limitation - the base branch needs to be available for comparison.`
+      );
+    }
     
     // Strategy 1: Try upstream tracking branch (most reliable if set)
     try {
@@ -162,15 +191,16 @@ export async function getBranchDiff(
       console.log(`[DEBUG] Default branch (refs/remotes/origin/HEAD) not configured: ${error.message || 'not found'}`);
     }
     
-    // Strategy 3: Try common branch names by checking remote refs first (most reliable fallback)
+    // Strategy 3: Try common branch names by checking remote refs first, then local branches
     // This works reliably in CI with fetch-depth: 0, and also works locally
     const commonBases = ['main', 'master', 'develop'];
     for (const candidate of commonBases) {
       if (candidate.toLowerCase() === branchName.toLowerCase()) {
         continue; // Skip if it's the same branch
       }
+      
+      // Try remote ref first
       try {
-        // Always check remote ref first (this is reliable in CI with fetch-depth: 0)
         await git.revparse([`origin/${candidate}`]);
         // In CI, prefer remote refs since local branches often don't exist
         if (isCI) {
@@ -188,7 +218,16 @@ export async function getBranchDiff(
         }
       } catch (error: any) {
         console.log(`[DEBUG] Remote branch 'origin/${candidate}' not found: ${error.message || 'does not exist'}`);
-        // Continue to next candidate
+        
+        // If remote doesn't exist, also try local branch (especially for CI like Vercel)
+        try {
+          await git.revparse([candidate]);
+          console.log(`[DEBUG] Remote 'origin/${candidate}' not available, but local branch '${candidate}' found - using local`);
+          return candidate;
+        } catch (localError: any) {
+          console.log(`[DEBUG] Local branch '${candidate}' also not found: ${localError.message || 'does not exist'}`);
+          // Continue to next candidate
+        }
       }
     }
     
