@@ -23,7 +23,13 @@ import { getDefaultBranchName } from './repo';
  *    Compare: origin/default~1 vs origin/default
  *    Shows: Changes in the direct commit
  * 
-  */
+ * Known Limitation - Rebase and Merge:
+ *    When using "Rebase and merge" strategy in GitHub, multiple commits are
+ *    added to the default branch. Our approach (default~1 vs default) only
+ *    captures the LAST commit, not all rebased commits. This is a naive
+ *    implementation. To fully support rebase merges, we'd need to use the
+ *    `before` SHA from GITHUB_EVENT_PATH to compare before...after.
+ */
 export async function getGitHubDiff(repoRoot: string): Promise<GitDiffResult> {
   const git: SimpleGit = simpleGit(repoRoot);
 
