@@ -1,0 +1,14 @@
+stages:
+  - test
+
+test-gitlab-context:
+  stage: test
+  image: node:20
+  script:
+    - npm ci
+    - npx tsx scripts/test-gitlab-context.ts
+  # Run on all branches and MRs
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
