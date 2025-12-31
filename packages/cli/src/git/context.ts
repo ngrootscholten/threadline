@@ -7,8 +7,8 @@
 
 import { Environment } from '../utils/environment';
 import { GitDiffResult, getDiffForEnvironment } from '../utils/git-diff-executor';
-import { getGitHubRepoName, getVercelRepoName, getLocalRepoName } from './repo';
-import { getGitHubBranchName, getVercelBranchName, getLocalBranchName } from './repo';
+import { getGitHubRepoName, getVercelRepoName, getLocalRepoName, getGitLabRepoName } from './repo';
+import { getGitHubBranchName, getVercelBranchName, getLocalBranchName, getGitLabBranchName } from './repo';
 
 export interface GitContext {
   diff: GitDiffResult;
@@ -22,6 +22,8 @@ export interface GitContext {
  * Each environment has a single, specific implementation:
  * - GitHub: Uses GITHUB_REPOSITORY, GITHUB_REF_NAME, and GitHub-specific diff logic
  * - Vercel: Uses VERCEL_GIT_REPO_OWNER/SLUG, VERCEL_GIT_COMMIT_REF, and Vercel-specific diff logic
+ * - GitLab: Uses CI_PROJECT_URL, CI_COMMIT_REF_NAME, and GitLab-specific diff logic
+ *           (fetches default branch on-demand since GitLab only clones current branch)
  * - Local: Uses git commands for repo/branch, and local diff logic
  * 
  * All methods fail loudly if they can't get the required information.
@@ -53,8 +55,11 @@ export async function getGitContextForEnvironment(
       };
     
     case 'gitlab':
-      // GitLab not implemented yet - will be added later
-      throw new Error('GitLab environment not yet supported for unified git context collection.');
+      return {
+        diff: await getDiffForEnvironment('gitlab', repoRoot),
+        repoName: await getGitLabRepoName(repoRoot),
+        branchName: await getGitLabBranchName(repoRoot)
+      };
     
     default:
       const _exhaustive: never = environment;

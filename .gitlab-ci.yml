@@ -1,0 +1,20 @@
+stages:
+  - build
+
+# Single job that runs everything
+build:
+  stage: build
+  image: node:20
+  variables:
+    # These are set in GitLab CI/CD Settings > Variables
+    THREADLINE_API_KEY: $THREADLINE_API_KEY
+    THREADLINE_ACCOUNT: $THREADLINE_ACCOUNT
+  script:
+    - npm ci --no-workspaces
+    # Debug script - can be removed once GitLab integration is stable
+    - npx tsx scripts/test-gitlab-context.ts
+    # Main build - threadlines check, linting, tsc, etc.
+    - npm run build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
