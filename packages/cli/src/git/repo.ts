@@ -170,6 +170,44 @@ export async function getLocalBranchName(repoRoot: string): Promise<string> {
 }
 
 /**
+ * GitLab CI: Get repository name
+ * 
+ * Uses CI_PROJECT_URL environment variable.
+ * This is the ONLY method for GitLab - no fallbacks, no alternatives.
+ */
+export async function getGitLabRepoName(repoRoot: string): Promise<string> {
+  const projectUrl = process.env.CI_PROJECT_URL;
+  if (!projectUrl) {
+    throw new Error(
+      'GitLab CI: CI_PROJECT_URL environment variable is not set. ' +
+      'This should be automatically provided by GitLab CI.'
+    );
+  }
+
+  // CI_PROJECT_URL is like "https://gitlab.com/owner/repo"
+  // Add .git suffix for consistency with other environments
+  return `${projectUrl}.git`;
+}
+
+/**
+ * GitLab CI: Get branch name
+ * 
+ * Uses CI_COMMIT_REF_NAME environment variable.
+ * This is the ONLY method for GitLab - no fallbacks, no alternatives.
+ */
+export async function getGitLabBranchName(repoRoot: string): Promise<string> {
+  const refName = process.env.CI_COMMIT_REF_NAME;
+  if (!refName) {
+    throw new Error(
+      'GitLab CI: CI_COMMIT_REF_NAME environment variable is not set. ' +
+      'This should be automatically provided by GitLab CI.'
+    );
+  }
+
+  return refName;
+}
+
+/**
  * Detects the default branch name of the repository for GitHub Actions.
  * 
  * Uses GITHUB_EVENT_PATH JSON (repository.default_branch) - the most authoritative source
