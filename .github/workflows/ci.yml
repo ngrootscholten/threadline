@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-workspaces
       
+      - name: Test GitHub Context (Debug)
+        run: npx tsx scripts/test-github-context.ts
+      
       - name: Build (includes threadlines check, linting, tsc, etc.)
         env:
           THREADLINE_API_KEY: ${{ secrets.THREADLINE_API_KEY }}
