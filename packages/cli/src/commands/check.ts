@@ -25,31 +25,39 @@ export async function checkCommand(options: {
   
   console.log(chalk.blue('🔍 Threadline: Checking code against your threadlines...\n'));
 
-  // Get and validate API key
+  // Pre-flight check: Validate ALL required environment variables at once
   const apiKey = getThreadlineApiKey();
-  if (!apiKey) {
-    console.error(chalk.red('❌ Error: THREADLINE_API_KEY is required'));
-    console.log('');
-    console.log(chalk.yellow('To fix this:'));
-    console.log(chalk.white('  1. Create a .env.local file in your project root'));
-    console.log(chalk.gray('  2. Add: THREADLINE_API_KEY=your-api-key-here'));
-    console.log(chalk.gray('  3. Make sure .env.local is in your .gitignore'));
-    console.log('');
-    console.log(chalk.gray('For CI/CD: Set THREADLINE_API_KEY as an environment variable in your platform settings.'));
-    process.exit(1);
-  }
-
-  // Get and validate account key
   const account = getThreadlineAccount();
-  if (!account) {
-    console.error(chalk.red('❌ Error: THREADLINE_ACCOUNT is required'));
+  const missingVars: string[] = [];
+  
+  if (!apiKey) missingVars.push('THREADLINE_API_KEY');
+  if (!account) missingVars.push('THREADLINE_ACCOUNT');
+  
+  if (missingVars.length > 0) {
+    console.error(chalk.red('❌ Error: Missing required environment variables:'));
+    for (const varName of missingVars) {
+      console.error(chalk.red(`   • ${varName}`));
+    }
     console.log('');
     console.log(chalk.yellow('To fix this:'));
-    console.log(chalk.white('  1. Create a .env.local file in your project root'));
-    console.log(chalk.gray('  2. Add: THREADLINE_ACCOUNT=your-email@example.com'));
-    console.log(chalk.gray('  3. Make sure .env.local is in your .gitignore'));
     console.log('');
-    console.log(chalk.gray('For CI/CD: Set THREADLINE_ACCOUNT as an environment variable in your platform settings.'));
+    console.log(chalk.white('  Local development:'));
+    console.log(chalk.gray('    1. Create a .env.local file in your project root'));
+    console.log(chalk.gray('    2. Add the missing variable(s):'));
+    if (missingVars.includes('THREADLINE_API_KEY')) {
+      console.log(chalk.gray('       THREADLINE_API_KEY=your-api-key-here'));
+    }
+    if (missingVars.includes('THREADLINE_ACCOUNT')) {
+      console.log(chalk.gray('       THREADLINE_ACCOUNT=your-email@example.com'));
+    }
+    console.log(chalk.gray('    3. Make sure .env.local is in your .gitignore'));
+    console.log('');
+    console.log(chalk.white('  CI/CD:'));
+    console.log(chalk.gray('    GitHub Actions: Settings → Secrets → Add variables'));
+    console.log(chalk.gray('    GitLab CI:      Settings → CI/CD → Variables'));
+    console.log(chalk.gray('    Vercel:         Settings → Environment Variables'));
+    console.log('');
+    console.log(chalk.gray('Get your credentials at: https://devthreadline.com/settings'));
     process.exit(1);
   }
 
@@ -199,8 +207,8 @@ export async function checkCommand(options: {
       threadlines: threadlinesWithContext,
       diff: gitDiff.diff,
       files: gitDiff.changedFiles,
-      apiKey,
-      account,
+      apiKey: apiKey!,
+      account: account!,
       repoName: repoName,
       branchName: branchName,
       commitSha: metadata.commitSha,

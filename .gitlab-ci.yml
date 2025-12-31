@@ -1,19 +1,7 @@
 stages:
-  - test
   - build
 
-# Debug job - can be removed once GitLab integration is stable
-test-gitlab-context:
-  stage: test
-  image: node:20
-  script:
-    - npm ci
-    - npx tsx scripts/test-gitlab-context.ts
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH
-
-# Main build job - runs threadlines check, linting, tsc, etc.
+# Single job that runs everything
 build:
   stage: build
   image: node:20
@@ -23,6 +11,9 @@ build:
     THREADLINE_ACCOUNT: $THREADLINE_ACCOUNT
   script:
     - npm ci --no-workspaces
+    # Debug script - can be removed once GitLab integration is stable
+    - npx tsx scripts/test-gitlab-context.ts
+    # Main build - threadlines check, linting, tsc, etc.
     - npm run build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
