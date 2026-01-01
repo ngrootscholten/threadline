@@ -5,6 +5,7 @@ import { getThreadlineApiKey, getThreadlineAccount } from '../utils/config';
 import { detectEnvironment } from '../utils/environment';
 import { detectContext, ReviewContext } from '../utils/context';
 import { collectMetadata } from '../utils/metadata';
+import { getDiffForContext } from '../utils/git-diff-executor';
 import { getGitContextForEnvironment } from '../git/context';
 import * as fs from 'fs';
 import * as path from 'path';
