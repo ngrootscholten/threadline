@@ -43,9 +43,10 @@ export async function GET(
       `SELECT 
         ct.id as check_threadline_id,
         ct.threadline_id,
-        ct.threadline_version,
-        ct.threadline_patterns,
-        ct.threadline_content,
+        td.threadline_version,
+        td.threadline_patterns,
+        td.threadline_content,
+        td.threadline_file_path,
         ct.context_files,
         ct.context_content,
         ct.relevant_files,
@@ -56,6 +57,7 @@ export async function GET(
         cr.reasoning,
         cr.file_references
       FROM check_threadlines ct
+      INNER JOIN threadline_definitions td ON ct.threadline_definition_id = td.id
       LEFT JOIN check_results cr ON ct.id = cr.check_threadline_id
       WHERE ct.check_id = $1 AND ct.threadline_id = $2`,
       [checkId, threadlineId]

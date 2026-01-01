@@ -7,8 +7,8 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build && (npx -y threadlines check || true)",
-    "build:local": "next build && (npx -y threadlines check || true)",
+    "build": "next build && (npx -y threadlines check || exit 0)",
+    "build:local": "next build && (npx -y threadlines check || exit 0)",
     "build:vercel": "npx tsx scripts/test-vercel-context.ts && next build",
     "start": "next start",
     "lint": "next lint",

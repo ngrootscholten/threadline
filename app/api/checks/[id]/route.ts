@@ -64,11 +64,12 @@ export async function GET(
       `SELECT 
         ct.id as check_threadline_id,
         ct.threadline_id,
-        ct.threadline_version,
+        td.threadline_version,
         cr.id as result_id,
         cr.status,
         cr.file_references
       FROM check_threadlines ct
+      INNER JOIN threadline_definitions td ON ct.threadline_definition_id = td.id
       LEFT JOIN check_results cr ON ct.id = cr.check_threadline_id
       WHERE ct.check_id = $1
       ORDER BY ct.created_at`,

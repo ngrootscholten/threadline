@@ -1,6 +1,6 @@
 {
   "name": "threadlines",
-  "version": "0.1.38",
+  "version": "0.1.39",
   "description": "Threadline CLI - AI-powered linter based on your natural language documentation",
   "main": "dist/index.js",
   "bin": {
@@ -36,7 +36,7 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck",
     "threadlines": "npx -y threadlines check",
-    "threadlines:local": "npx -y threadlines check || true",
+    "threadlines:local": "npx -y threadlines check || exit 0",
     "check:all": "npm run check && npm run threadlines"
   },
   "dependencies": {

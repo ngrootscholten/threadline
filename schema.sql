@@ -151,13 +151,23 @@ CREATE TABLE IF NOT EXISTS checks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS check_threadlines (
+-- Threadline definitions table - stores deduplicated threadline content
+CREATE TABLE IF NOT EXISTS threadline_definitions (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
   threadline_id TEXT NOT NULL,
+  threadline_file_path TEXT NOT NULL,
   threadline_version TEXT NOT NULL,
   threadline_patterns JSONB NOT NULL,
   threadline_content TEXT NOT NULL,
+  predecessor_id TEXT REFERENCES threadline_definitions(id), -- Optional: points to earlier version
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS check_threadlines (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
+  threadline_id TEXT NOT NULL, -- Kept for query convenience
+  threadline_definition_id TEXT NOT NULL REFERENCES threadline_definitions(id), -- Reference to definition (contains file_path, patterns, content, version)
   context_files JSONB,
   context_content JSONB,
   relevant_files JSONB, -- Files that matched threadline patterns
@@ -190,8 +200,16 @@ CREATE INDEX IF NOT EXISTS idx_checks_repo_name ON checks(repo_name);
 CREATE INDEX IF NOT EXISTS idx_checks_branch_name ON checks(branch_name);
 CREATE INDEX IF NOT EXISTS idx_checks_created_at ON checks(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_checks_repo_branch ON checks(repo_name, branch_name);
+-- Indexes for threadline_definitions
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_threadline_id ON threadline_definitions(threadline_id);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_file_path ON threadline_definitions(threadline_file_path);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_threadline_file ON threadline_definitions(threadline_id, threadline_file_path);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_predecessor ON threadline_definitions(predecessor_id);
+
+-- Indexes for check_threadlines
 CREATE INDEX IF NOT EXISTS idx_check_threadlines_check_id ON check_threadlines(check_id);
 CREATE INDEX IF NOT EXISTS idx_check_threadlines_threadline_id ON check_threadlines(threadline_id);
+CREATE INDEX IF NOT EXISTS idx_check_threadlines_definition_id ON check_threadlines(threadline_definition_id);
 CREATE INDEX IF NOT EXISTS idx_check_results_check_threadline_id ON check_results(check_threadline_id);
 CREATE INDEX IF NOT EXISTS idx_check_results_status ON check_results(status);
 CREATE INDEX IF NOT EXISTS idx_check_results_created_at ON check_results(created_at DESC);
@@ -199,6 +217,7 @@ CREATE INDEX IF NOT EXISTS idx_check_diffs_check_id ON check_diffs(check_id);
 
 -- Enable RLS on audit tables
 ALTER TABLE checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE threadline_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_threadlines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_diffs ENABLE ROW LEVEL SECURITY;

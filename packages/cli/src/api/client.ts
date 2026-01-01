@@ -6,6 +6,7 @@ export interface ReviewRequest {
     version: string;
     patterns: string[];
     content: string;
+    filePath: string;
     contextFiles?: string[];
     contextContent?: Record<string, string>;
   }>;

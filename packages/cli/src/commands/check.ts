@@ -289,6 +289,7 @@ export async function checkCommand(options: {
         version: threadline.version,
         patterns: threadline.patterns,
         content: threadline.content,
+        filePath: threadline.filePath,
         contextFiles: threadline.contextFiles,
         contextContent
       };

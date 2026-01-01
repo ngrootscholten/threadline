@@ -111,27 +111,47 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
       const threadlineResult = resultMap.get(threadline.id);
       const isProcessThreadlineResult = threadlineResult && 'relevantFiles' in threadlineResult;
       
-      // Insert threadline with filtering metadata
+        
+      // Step 1: Create threadline_definition (always create new, no deduplication yet)
+      const definitionResult = await pool.query(
+        `INSERT INTO threadline_definitions (
+          threadline_id,
+          threadline_file_path,
+          threadline_version,
+          threadline_patterns,
+          threadline_content,
+          predecessor_id
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id`,
+        [
+          threadline.id,
+          threadline.filePath,
+          threadline.version,
+          JSON.stringify(threadline.patterns),
+          threadline.content,
+          null // No predecessor for now (no deduplication)
+        ]
+      );
+
+      const threadlineDefinitionId = definitionResult.rows[0].id;
+
+      // Step 2: Insert check_threadlines with reference to definition
       const threadlineInsertResult = await pool.query(
         `INSERT INTO check_threadlines (
           check_id,
           threadline_id,
-          threadline_version,
-          threadline_patterns,
-          threadline_content,
+          threadline_definition_id,
           context_files,
           context_content,
           relevant_files,
           filtered_diff,
           files_in_filtered_diff
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id`,
         [
           checkId,
           threadline.id,
-          threadline.version,
-          JSON.stringify(threadline.patterns),
-          threadline.content,
+          threadlineDefinitionId,
           threadline.contextFiles ? JSON.stringify(threadline.contextFiles) : null,
           threadline.contextContent ? JSON.stringify(threadline.contextContent) : null,
           isProcessThreadlineResult ? JSON.stringify(threadlineResult.relevantFiles) : null,

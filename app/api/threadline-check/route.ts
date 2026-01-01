@@ -10,6 +10,7 @@ export interface ReviewRequest {
     version: string;
     patterns: string[];
     content: string;
+    filePath: string;
     contextFiles?: string[];
     contextContent?: Record<string, string>;
   }>;
@@ -121,6 +122,16 @@ export async function POST(req: NextRequest) {
         { error: 'threadlines array is required and cannot be empty' },
         { status: 400 }
       );
+    }
+
+    // Validate that all threadlines have filePath (required for new schema)
+    for (const threadline of request.threadlines) {
+      if (!threadline.filePath || typeof threadline.filePath !== 'string' || threadline.filePath.trim() === '') {
+        return NextResponse.json(
+          { error: `Missing required field 'filePath' for threadline '${threadline.id}'. Please update your Threadline CLI to the latest version.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Allow empty diff (no code changes) - this is valid
