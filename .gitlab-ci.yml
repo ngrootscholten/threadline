@@ -2,13 +2,11 @@ stages:
   - build
 
 # Single job that runs everything
+# Note: THREADLINE_API_KEY and THREADLINE_ACCOUNT must be set in
+# GitLab → Settings → CI/CD → Variables (NOT marked as Protected)
 build:
   stage: build
   image: node:20
-  variables:
-    # These are set in GitLab CI/CD Settings > Variables
-    THREADLINE_API_KEY: $THREADLINE_API_KEY
-    THREADLINE_ACCOUNT: $THREADLINE_ACCOUNT
   script:
     - npm ci --no-workspaces
     # Debug script - can be removed once GitLab integration is stable
