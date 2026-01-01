@@ -16,6 +16,7 @@ Our code should be fact-based and show errors clearly. We should never silently 
 ## Guidelines
 
 1. **No silent fallbacks** - Don't catch errors and silently continue or return null without logging. Multiple silent fallbacks make code harder to maintain because you lose track of which code paths were intended or expected to work.
+   - **Note**: Error propagation (where errors bubble up and fail loudly) is acceptable and NOT a silent fallback. Silent fallbacks specifically refer to trying alternative methods when one fails (e.g., try method A, if it fails silently try method B).
 2. **No guesses** - Don't assume values or make up defaults without clear evidence
 3. **Show errors clearly** - When something fails, log the error with context so it can be diagnosed
 4. **Fact-based decisions** - Base decisions on actual data, not assumptions
@@ -67,6 +68,24 @@ function getRepoName(): string | null {
   } catch (error: any) {
     console.log(`[DEBUG] Error getting repo name: ${error.message}`);
     return null;
+  }
+}
+
+// ✅ Good - Error propagation (not a silent fallback)
+async function getDiff(commitSha: string): Promise<string> {
+  // If git.show() fails, error propagates and fails loudly
+  // This is NOT a silent fallback - no alternative method is tried
+  const diff = await git.show([commitSha, '--format=', '--no-color', '-U200']);
+  return diff || '';
+}
+
+// ❌ Bad - Silent fallback to alternative method
+async function getDiff(commitSha: string): Promise<string> {
+  try {
+    return await git.show([commitSha, '--format=', '--no-color', '-U200']);
+  } catch {
+    // Silent fallback - tries alternative method without logging
+    return await git.diff([`${commitSha}^..${commitSha}`, '-U200']);
   }
 }
 ```
