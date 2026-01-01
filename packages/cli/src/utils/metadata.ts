@@ -167,30 +167,27 @@ async function getCommitAuthorForEnvironment(
     // Format: "name <email>" (e.g., "ngrootscholten <niels.grootscholten@gmail.com>")
     // This is more reliable than git commands, especially in shallow clones
     const commitAuthor = process.env.CI_COMMIT_AUTHOR;
-    if (commitAuthor) {
-      // Parse "name <email>" format
-      const match = commitAuthor.match(/^(.+?)\s*<(.+?)>$/);
-      if (match) {
-        return {
-          name: match[1].trim(),
-          email: match[2].trim()
-        };
-      }
-      // If format doesn't match expected pattern, try to extract anyway
-      // Some GitLab versions might format differently
-      const parts = commitAuthor.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        // Assume last part is email if it contains @
-        const emailIndex = parts.findIndex(p => p.includes('@'));
-        if (emailIndex >= 0) {
-          const email = parts[emailIndex].replace(/[<>]/g, '').trim();
-          const name = parts.slice(0, emailIndex).join(' ').trim();
-          if (name && email) {
-            return { name, email };
-          }
-        }
-      }
+    if (!commitAuthor) {
+      throw new Error(
+        'GitLab CI: CI_COMMIT_AUTHOR environment variable is not set. ' +
+        'This should be automatically provided by GitLab CI.'
+      );
     }
+    
+    // Parse "name <email>" format
+    const match = commitAuthor.match(/^(.+?)\s*<(.+?)>$/);
+    if (!match) {
+      throw new Error(
+        `GitLab CI: CI_COMMIT_AUTHOR format is invalid. ` +
+        `Expected format: "name <email>", got: "${commitAuthor}". ` +
+        `This should be automatically provided by GitLab CI in the correct format.`
+      );
+    }
+    
+    return {
+      name: match[1].trim(),
+      email: match[2].trim()
+    };
   }
   
   // Fallback to git command for all environments (including GitHub/GitLab if env vars unavailable)
