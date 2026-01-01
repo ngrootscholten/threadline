@@ -90,11 +90,12 @@ export async function getGitHubDiff(repoRoot: string): Promise<GitDiffResult> {
         diff: diff || '',
         changedFiles
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If we can't get the diff (e.g., first commit on branch), throw a clear error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(
         `Could not get diff for default branch '${defaultBranch}'. ` +
-        `This might be the first commit on the branch. Error: ${error.message}`
+        `This might be the first commit on the branch. Error: ${errorMessage}`
       );
     }
   }

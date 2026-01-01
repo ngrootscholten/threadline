@@ -73,8 +73,9 @@ export async function initCommand() {
     console.log('');
     console.log(chalk.gray('  3. Run: npx threadlines check'));
     console.log(chalk.gray('     (Use npx --yes threadlines check in non-interactive environments)'));
-  } catch (error: any) {
-    console.error(chalk.red(`\n❌ Error: ${error.message}`));
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(chalk.red(`\n❌ Error: ${errorMessage}`));
     process.exit(1);
   }
 }

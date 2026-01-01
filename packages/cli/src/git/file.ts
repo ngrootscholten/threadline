@@ -95,9 +95,10 @@ export async function getFolderContent(repoRoot: string, folderPath: string): Pr
       diffs.push(diffHeader + fileDiff);
       
       changedFiles.push(filePath);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Skip files that can't be read (permissions, etc.)
-      console.warn(`Warning: Could not read file '${filePath}': ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`Warning: Could not read file '${filePath}': ${errorMessage}`);
     }
   }
 

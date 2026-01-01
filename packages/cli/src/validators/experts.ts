@@ -50,7 +50,7 @@ export async function validateThreadline(
       };
     }
 
-    const frontmatter = yaml.load(frontmatterMatch[1]) as any;
+    const frontmatter = yaml.load(frontmatterMatch[1]) as Record<string, unknown>;
     const body = frontmatterMatch[2].trim();
 
     // Validate required fields
@@ -67,7 +67,7 @@ export async function validateThreadline(
       errors.push('patterns must be an array');
     }
 
-    if (frontmatter.patterns && frontmatter.patterns.length === 0) {
+    if (Array.isArray(frontmatter.patterns) && frontmatter.patterns.length === 0) {
       errors.push('patterns array cannot be empty');
     }
 
@@ -78,9 +78,11 @@ export async function validateThreadline(
       } else {
         // Check if context files exist
         for (const contextFile of frontmatter.context_files) {
-          const fullPath = path.join(repoRoot, contextFile);
-          if (!fs.existsSync(fullPath)) {
-            errors.push(`Context file not found: ${contextFile}`);
+          if (typeof contextFile === 'string') {
+            const fullPath = path.join(repoRoot, contextFile);
+            if (!fs.existsSync(fullPath)) {
+              errors.push(`Context file not found: ${contextFile}`);
+            }
           }
         }
       }
@@ -92,7 +94,7 @@ export async function validateThreadline(
     }
 
     // Validate version format (basic semver check)
-    if (frontmatter.version && !/^\d+\.\d+\.\d+/.test(frontmatter.version)) {
+    if (frontmatter.version && typeof frontmatter.version === 'string' && !/^\d+\.\d+\.\d+/.test(frontmatter.version)) {
       errors.push('version must be in semver format (e.g., 1.0.0)');
     }
 
@@ -100,20 +102,22 @@ export async function validateThreadline(
       return { valid: false, errors };
     }
 
+    // Type assertions for required fields (already validated above)
     const threadline: Threadline = {
-      id: frontmatter.id,
-      version: frontmatter.version,
-      patterns: frontmatter.patterns,
-      contextFiles: frontmatter.context_files || [],
+      id: frontmatter.id as string,
+      version: frontmatter.version as string,
+      patterns: frontmatter.patterns as string[],
+      contextFiles: (Array.isArray(frontmatter.context_files) ? frontmatter.context_files.filter((f): f is string => typeof f === 'string') : []) as string[],
       content: body,
       filePath: path.relative(repoRoot, filePath)
     };
 
     return { valid: true, threadline };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       valid: false,
-      errors: [`Failed to parse threadline file: ${error.message}`]
+      errors: [`Failed to parse threadline file: ${errorMessage}`]
     };
   }
 }

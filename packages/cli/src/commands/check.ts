@@ -1,6 +1,6 @@
 import { findThreadlines } from '../validators/experts';
 import { getFileContent, getFolderContent, getMultipleFilesContent } from '../git/file';
-import { ReviewAPIClient, ExpertResult } from '../api/client';
+import { ReviewAPIClient, ExpertResult, ReviewResponse } from '../api/client';
 import { getThreadlineApiKey, getThreadlineAccount } from '../utils/config';
 import { detectEnvironment } from '../utils/environment';
 import { detectContext, ReviewContext } from '../utils/context';
@@ -228,13 +228,14 @@ export async function checkCommand(options: {
     const hasAttention = response.results.some(r => r.status === 'attention');
     process.exit(hasAttention ? 1 : 0);
 
-  } catch (error: any) {
-    console.error(chalk.red(`\n❌ Error: ${error.message}`));
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(chalk.red(`\n❌ Error: ${errorMessage}`));
     process.exit(1);
   }
 }
 
-function displayResults(response: any, showFull: boolean) {
+function displayResults(response: ReviewResponse, showFull: boolean) {
   const { results, metadata, message } = response;
 
   // Filter results based on --full flag

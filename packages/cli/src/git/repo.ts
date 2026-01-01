@@ -71,14 +71,15 @@ export async function getLocalRepoName(repoRoot: string): Promise<string> {
     }
 
     return origin.refs.fetch;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If it's already our error, re-throw it
-    if (error.message.includes('Local:')) {
+    if (error instanceof Error && error.message.includes('Local:')) {
       throw error;
     }
     // Otherwise, wrap it
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
-      `Local: Failed to get repository name from git: ${error.message}`
+      `Local: Failed to get repository name from git: ${errorMessage}`
     );
   }
 }
@@ -157,14 +158,15 @@ export async function getLocalBranchName(repoRoot: string): Promise<string> {
     }
 
     return branchName.trim();
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If it's already our error, re-throw it
-    if (error.message.includes('Local:')) {
+    if (error instanceof Error && error.message.includes('Local:')) {
       throw error;
     }
     // Otherwise, wrap it
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
-      `Local: Failed to get branch name from git: ${error.message}`
+      `Local: Failed to get branch name from git: ${errorMessage}`
     );
   }
 }
@@ -249,14 +251,15 @@ export async function getDefaultBranchName(_repoRoot: string): Promise<string> {
     }
     
     return defaultBranch;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If it's already our error, re-throw it
-    if (error.message.includes('GITHUB_EVENT_PATH') || error.message.includes('default_branch')) {
+    if (error instanceof Error && (error.message.includes('GITHUB_EVENT_PATH') || error.message.includes('default_branch'))) {
       throw error;
     }
     // Otherwise, wrap it
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
-      `Failed to read or parse GITHUB_EVENT_PATH: ${error.message}. ` +
+      `Failed to read or parse GITHUB_EVENT_PATH: ${errorMessage}. ` +
       'This should be automatically provided by GitHub Actions.'
     );
   }

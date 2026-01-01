@@ -48,9 +48,10 @@ export async function getBranchDiff(
           diff: diff || '',
           changedFiles
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         // If no previous commit, return empty (first commit)
-        console.log(`[DEBUG] No previous commit found (first commit or error): ${error.message || 'HEAD~1 does not exist'}`);
+        const errorMessage = error instanceof Error ? error.message : 'HEAD~1 does not exist';
+        console.log(`[DEBUG] No previous commit found (first commit or error): ${errorMessage}`);
         return {
           diff: '',
           changedFiles: []
@@ -92,8 +93,9 @@ export async function getBranchDiff(
       } else {
         console.log(`[DEBUG] Upstream tracking branch '${upstreamBranch}' is the same as current branch, skipping`);
       }
-    } catch (error: any) {
-      console.log(`[DEBUG] Upstream tracking branch not set for '${branchName}': ${error.message || 'no upstream configured'}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'no upstream configured';
+      console.log(`[DEBUG] Upstream tracking branch not set for '${branchName}': ${errorMessage}`);
     }
     
     // Strategy 2: Try default branch from origin/HEAD (reliable if configured)
@@ -119,8 +121,9 @@ export async function getBranchDiff(
       } else {
         console.log(`[DEBUG] Default branch '${defaultBranchName}' is the same as current branch, skipping`);
       }
-    } catch (error: any) {
-      console.log(`[DEBUG] Default branch (refs/remotes/origin/HEAD) not configured: ${error.message || 'not found'}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'not found';
+      console.log(`[DEBUG] Default branch (refs/remotes/origin/HEAD) not configured: ${errorMessage}`);
     }
     
     // Strategy 3: Try common branch names by checking remote refs first, then local branches
@@ -148,16 +151,18 @@ export async function getBranchDiff(
           console.log(`[DEBUG] Common branch '${candidate}' exists remotely but not locally, using remote: origin/${candidate}`);
           return `origin/${candidate}`;
         }
-      } catch (error: any) {
-        console.log(`[DEBUG] Remote branch 'origin/${candidate}' not found: ${error.message || 'does not exist'}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'does not exist';
+        console.log(`[DEBUG] Remote branch 'origin/${candidate}' not found: ${errorMessage}`);
         
         // If remote doesn't exist, also try local branch (especially for CI like Vercel)
         try {
           await git.revparse([candidate]);
           console.log(`[DEBUG] Remote 'origin/${candidate}' not available, but local branch '${candidate}' found - using local`);
           return candidate;
-        } catch (localError: any) {
-          console.log(`[DEBUG] Local branch '${candidate}' also not found: ${localError.message || 'does not exist'}`);
+        } catch (localError: unknown) {
+          const localErrorMessage = localError instanceof Error ? localError.message : 'does not exist';
+          console.log(`[DEBUG] Local branch '${candidate}' also not found: ${localErrorMessage}`);
           // Continue to next candidate
         }
       }
@@ -230,15 +235,17 @@ export async function getCommitDiff(repoRoot: string, sha: string): Promise<GitD
       .split('\n')
       .filter(line => line.trim().length > 0)
       .map(line => line.trim());
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Fallback: try git diff format
     try {
       diff = await git.diff([`${sha}^..${sha}`, '-U200']);
       // Get files from diff summary
       const diffSummary = await git.diffSummary([`${sha}^..${sha}`]);
       changedFiles = diffSummary.files.map(f => f.file);
-    } catch (diffError: any) {
-      throw new Error(`Commit ${sha} not found or invalid: ${error.message || diffError.message}`);
+    } catch (diffError: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const diffErrorMessage = diffError instanceof Error ? diffError.message : 'Unknown error';
+      throw new Error(`Commit ${sha} not found or invalid: ${errorMessage || diffErrorMessage}`);
     }
   }
 
