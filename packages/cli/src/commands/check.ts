@@ -160,7 +160,6 @@ export async function checkCommand(options: {
     if (gitDiff.changedFiles.length === 0) {
       console.error(chalk.red('❌ Error: No changes detected.'));
       console.error(chalk.red('   Threadline check requires code changes to analyze.'));
-      console.error(chalk.red('   This may indicate a problem with git diff detection.'));
       process.exit(1);
     }
     

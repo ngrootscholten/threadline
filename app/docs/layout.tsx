@@ -5,6 +5,7 @@ const docsNav = [
   { href: "/docs/creating-threadlines", label: "Creating Threadlines" },
   { href: "/docs/using-cli", label: "Using the CLI" },
   { href: "/docs/ci-cd", label: "CI/CD Integration" },
+  { href: "/docs/diff-detection", label: "How Diff Detection Works" },
   { href: "/docs/examples", label: "Examples & Patterns" },
   { href: "/docs/configuration", label: "Configuration" },
   { href: "/docs/troubleshooting", label: "Troubleshooting" },
