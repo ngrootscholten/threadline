@@ -113,11 +113,6 @@ export async function POST(req: NextRequest) {
     if (request.branchName) {
       console.log(`   Branch: ${request.branchName}`);
     }
-    if (request.commitAuthorName || request.commitAuthorEmail) {
-      console.log(`   Commit Author: ${request.commitAuthorName || 'N/A'} <${request.commitAuthorEmail || 'N/A'}>`);
-    } else {
-      console.log(`   ⚠️  Commit Author: NOT PROVIDED (commitAuthorName=${request.commitAuthorName}, commitAuthorEmail=${request.commitAuthorEmail})`);
-    }
 
     // Validate request
     if (!request.threadlines || !Array.isArray(request.threadlines) || request.threadlines.length === 0) {

@@ -38,9 +38,6 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
     // Start a transaction
     await pool.query('BEGIN');
 
-    // Debug: Log what we're about to store
-    console.log(`[storeCheck] Storing check with author: ${commitAuthorName || 'NULL'} <${commitAuthorEmail || 'NULL'}>`);
-
     // 1. Insert check record
     const checkResult = await pool.query(
       `INSERT INTO checks (

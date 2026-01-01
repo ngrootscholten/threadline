@@ -47,22 +47,17 @@ export async function collectMetadata(
       metadata.commitMessage = message;
     }
     
-    // Get commit author - environment-specific approach
+    // Get commit author - environment-specific approach (fails loudly if unavailable)
     const author = await getCommitAuthorForEnvironment(environment, repoRoot, metadata.commitSha);
-    if (author) {
-      metadata.commitAuthorName = author.name;
-      metadata.commitAuthorEmail = author.email;
-    }
+    metadata.commitAuthorName = author.name;
+    metadata.commitAuthorEmail = author.email;
   } else {
     // For local environment without explicit commit SHA:
     // Use git config (who will commit staged/unstaged changes)
     // No fallbacks - if git config fails, the error propagates and fails the check
-    console.log('[DEBUG] Local environment - calling getGitConfigUser()');
     const author = await getGitConfigUser(repoRoot);
-    console.log(`[DEBUG] getGitConfigUser returned: ${JSON.stringify(author)}`);
     metadata.commitAuthorName = author.name;
     metadata.commitAuthorEmail = author.email;
-    console.log(`[DEBUG] metadata after assignment: commitAuthorName=${metadata.commitAuthorName}, commitAuthorEmail=${metadata.commitAuthorEmail}`);
   }
 
   // Collect PR/MR title (environment-specific)
@@ -113,52 +108,80 @@ function getCommitSha(context: ReviewContext, environment: Environment): string 
 /**
  * Gets commit author information using environment-specific methods.
  * 
- * For GitHub: Reads from GITHUB_EVENT_PATH JSON file (most reliable)
- * For GitLab: Uses CI_COMMIT_AUTHOR environment variable (most reliable)
- * For Local: Uses git config (for uncommitted changes, represents who will commit)
- * For other environments: Uses git log command
+ * Each environment has a single, isolated strategy:
+ * - GitHub: Reads from GITHUB_EVENT_PATH JSON file (fails loudly if unavailable)
+ * - GitLab: Uses CI_COMMIT_AUTHOR environment variable (fails loudly if unavailable)
+ * - Vercel: Uses VERCEL_GIT_COMMIT_AUTHOR_NAME + git log (fails loudly if unavailable)
+ * - Local: Uses git config (handled separately in collectMetadata, fails loudly if unavailable)
+ * 
+ * No fallbacks - each environment is completely isolated.
  */
 async function getCommitAuthorForEnvironment(
   environment: Environment,
   repoRoot: string,
   commitSha: string
-): Promise<{ name: string; email: string } | null> {
+): Promise<{ name: string; email: string }> {
   if (environment === 'github') {
     // GitHub: Read from GITHUB_EVENT_PATH JSON file
     // This is more reliable than git commands, especially in shallow clones
     const eventPath = process.env.GITHUB_EVENT_PATH;
-    if (eventPath && fs.existsSync(eventPath)) {
-      try {
-        const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8'));
-        
-        // For push events, use head_commit.author
-        if (eventData.head_commit?.author) {
-          return {
-            name: eventData.head_commit.author.name,
-            email: eventData.head_commit.author.email
-          };
-        }
-        
-        // For PR events, use commits[0].author (first commit in the PR)
-        if (eventData.commits && eventData.commits.length > 0 && eventData.commits[0].author) {
-          return {
-            name: eventData.commits[0].author.name,
-            email: eventData.commits[0].author.email
-          };
-        }
-        
-        // Fallback to pull_request.head.commit.author for PR events
-        if (eventData.pull_request?.head?.commit?.author) {
-          return {
-            name: eventData.pull_request.head.commit.author.name,
-            email: eventData.pull_request.head.commit.author.email
-          };
-        }
-      } catch (error: unknown) {
-        // If JSON parsing fails, fall through to git command
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.warn(`Warning: Failed to read GitHub event JSON: ${errorMessage}`);
+    if (!eventPath) {
+      throw new Error(
+        'GitHub Actions: GITHUB_EVENT_PATH environment variable is not set. ' +
+        'This should be automatically provided by GitHub Actions.'
+      );
+    }
+    
+    if (!fs.existsSync(eventPath)) {
+      throw new Error(
+        `GitHub Actions: GITHUB_EVENT_PATH file does not exist: ${eventPath}. ` +
+        'This should be automatically provided by GitHub Actions.'
+      );
+    }
+    
+    try {
+      const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8'));
+      
+      // For push events, use head_commit.author
+      if (eventData.head_commit?.author) {
+        return {
+          name: eventData.head_commit.author.name,
+          email: eventData.head_commit.author.email
+        };
       }
+      
+      // For PR events, use commits[0].author (first commit in the PR)
+      if (eventData.commits && eventData.commits.length > 0 && eventData.commits[0].author) {
+        return {
+          name: eventData.commits[0].author.name,
+          email: eventData.commits[0].author.email
+        };
+      }
+      
+      // Fallback to pull_request.head.commit.author for PR events
+      if (eventData.pull_request?.head?.commit?.author) {
+        return {
+          name: eventData.pull_request.head.commit.author.name,
+          email: eventData.pull_request.head.commit.author.email
+        };
+      }
+      
+      // If we get here, the event JSON doesn't contain author info
+      throw new Error(
+        `GitHub Actions: GITHUB_EVENT_PATH JSON does not contain commit author information. ` +
+        `Event type: ${eventData.action || 'unknown'}. ` +
+        `This should be automatically provided by GitHub Actions.`
+      );
+    } catch (error: unknown) {
+      // If JSON parsing fails, fail loudly
+      if (error instanceof Error && error.message.includes('GitHub Actions:')) {
+        throw error; // Re-throw our own errors
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        `GitHub Actions: Failed to read or parse GITHUB_EVENT_PATH JSON: ${errorMessage}. ` +
+        'This should be automatically provided by GitHub Actions.'
+      );
     }
   }
   
@@ -190,8 +213,53 @@ async function getCommitAuthorForEnvironment(
     };
   }
   
-  // Fallback to git command for all environments (including GitHub/GitLab if env vars unavailable)
-  return await getCommitAuthor(repoRoot, commitSha);
+  if (environment === 'vercel') {
+    // Vercel: Use VERCEL_GIT_COMMIT_AUTHOR_NAME for name, git log for email
+    // Vercel provides author name but not email in environment variables
+    // git log works reliably in Vercel's build environment
+    const authorName = process.env.VERCEL_GIT_COMMIT_AUTHOR_NAME;
+    if (!authorName) {
+      throw new Error(
+        'Vercel: VERCEL_GIT_COMMIT_AUTHOR_NAME environment variable is not set. ' +
+        'This should be automatically provided by Vercel.'
+      );
+    }
+    
+    // Get email from git log - fail loudly if this doesn't work
+    const gitAuthor = await getCommitAuthor(repoRoot, commitSha);
+    if (!gitAuthor || !gitAuthor.email) {
+      throw new Error(
+        `Vercel: Failed to get commit author email from git log for commit ${commitSha}. ` +
+        `This should be available in Vercel's build environment.`
+      );
+    }
+    
+    return {
+      name: authorName.trim(),
+      email: gitAuthor.email.trim()
+    };
+  }
+  
+  // Local environment should not reach here - it's handled separately in collectMetadata
+  // when commitSha is undefined. If we get here with 'local', it means commitSha was set
+  // (e.g., --commit flag), so we can use git log.
+  if (environment === 'local') {
+    const gitAuthor = await getCommitAuthor(repoRoot, commitSha);
+    if (!gitAuthor || !gitAuthor.email) {
+      throw new Error(
+        `Local: Failed to get commit author from git log for commit ${commitSha}. ` +
+        'This should be available in your local git repository.'
+      );
+    }
+    return {
+      name: gitAuthor.name,
+      email: gitAuthor.email
+    };
+  }
+  
+  // Unknown environment - this should never happen due to TypeScript exhaustiveness
+  const _exhaustive: never = environment;
+  throw new Error(`Unknown environment: ${_exhaustive}`);
 }
 
 /**
