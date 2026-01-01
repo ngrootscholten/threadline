@@ -13,6 +13,8 @@
 import { Environment } from './environment';
 import { ReviewContext } from './context';
 import { getCommitMessage, getCommitAuthor } from '../git/diff';
+import * as fs from 'fs';
+import simpleGit from 'simple-git';
 
 export interface ReviewMetadata {
   commitSha?: string;
@@ -38,28 +40,26 @@ export async function collectMetadata(
   // Collect commit SHA (environment-specific)
   metadata.commitSha = getCommitSha(context, environment);
 
-  // Collect commit message and author (if we have a commit SHA)
+  // Collect commit message and author (environment-specific)
   if (metadata.commitSha) {
     const message = await getCommitMessage(repoRoot, metadata.commitSha);
     if (message) {
       metadata.commitMessage = message;
     }
     
-    // Get commit author using commit SHA
-    // No fallbacks - if this fails, the error propagates and fails the check
-    const author = await getCommitAuthor(repoRoot, metadata.commitSha);
+    // Get commit author - environment-specific approach
+    const author = await getCommitAuthorForEnvironment(environment, repoRoot, metadata.commitSha);
     if (author) {
       metadata.commitAuthorName = author.name;
       metadata.commitAuthorEmail = author.email;
     }
   } else {
-    // For local environment without explicit commit SHA, get HEAD commit author
-    // No fallbacks - if this fails, the error propagates and fails the check
-    const author = await getCommitAuthor(repoRoot);
-    if (author) {
-      metadata.commitAuthorName = author.name;
-      metadata.commitAuthorEmail = author.email;
-    }
+    // For local environment without explicit commit SHA:
+    // Use git config (who will commit staged/unstaged changes)
+    // No fallbacks - if git config fails, the error propagates and fails the check
+    const author = await getGitConfigUser(repoRoot);
+    metadata.commitAuthorName = author.name;
+    metadata.commitAuthorEmail = author.email;
   }
 
   // Collect PR/MR title (environment-specific)
@@ -105,6 +105,123 @@ function getCommitSha(context: ReviewContext, environment: Environment): string 
   }
 
   return undefined;
+}
+
+/**
+ * Gets commit author information using environment-specific methods.
+ * 
+ * For GitHub: Reads from GITHUB_EVENT_PATH JSON file (most reliable)
+ * For GitLab: Uses CI_COMMIT_AUTHOR environment variable (most reliable)
+ * For Local: Uses git config (for uncommitted changes, represents who will commit)
+ * For other environments: Uses git log command
+ */
+async function getCommitAuthorForEnvironment(
+  environment: Environment,
+  repoRoot: string,
+  commitSha: string
+): Promise<{ name: string; email: string } | null> {
+  if (environment === 'github') {
+    // GitHub: Read from GITHUB_EVENT_PATH JSON file
+    // This is more reliable than git commands, especially in shallow clones
+    const eventPath = process.env.GITHUB_EVENT_PATH;
+    if (eventPath && fs.existsSync(eventPath)) {
+      try {
+        const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8'));
+        
+        // For push events, use head_commit.author
+        if (eventData.head_commit?.author) {
+          return {
+            name: eventData.head_commit.author.name,
+            email: eventData.head_commit.author.email
+          };
+        }
+        
+        // For PR events, use commits[0].author (first commit in the PR)
+        if (eventData.commits && eventData.commits.length > 0 && eventData.commits[0].author) {
+          return {
+            name: eventData.commits[0].author.name,
+            email: eventData.commits[0].author.email
+          };
+        }
+        
+        // Fallback to pull_request.head.commit.author for PR events
+        if (eventData.pull_request?.head?.commit?.author) {
+          return {
+            name: eventData.pull_request.head.commit.author.name,
+            email: eventData.pull_request.head.commit.author.email
+          };
+        }
+      } catch (error: unknown) {
+        // If JSON parsing fails, fall through to git command
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.warn(`Warning: Failed to read GitHub event JSON: ${errorMessage}`);
+      }
+    }
+  }
+  
+  if (environment === 'gitlab') {
+    // GitLab: Use CI_COMMIT_AUTHOR environment variable
+    // Format: "name <email>" (e.g., "ngrootscholten <niels.grootscholten@gmail.com>")
+    // This is more reliable than git commands, especially in shallow clones
+    const commitAuthor = process.env.CI_COMMIT_AUTHOR;
+    if (commitAuthor) {
+      // Parse "name <email>" format
+      const match = commitAuthor.match(/^(.+?)\s*<(.+?)>$/);
+      if (match) {
+        return {
+          name: match[1].trim(),
+          email: match[2].trim()
+        };
+      }
+      // If format doesn't match expected pattern, try to extract anyway
+      // Some GitLab versions might format differently
+      const parts = commitAuthor.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        // Assume last part is email if it contains @
+        const emailIndex = parts.findIndex(p => p.includes('@'));
+        if (emailIndex >= 0) {
+          const email = parts[emailIndex].replace(/[<>]/g, '').trim();
+          const name = parts.slice(0, emailIndex).join(' ').trim();
+          if (name && email) {
+            return { name, email };
+          }
+        }
+      }
+    }
+  }
+  
+  // Fallback to git command for all environments (including GitHub/GitLab if env vars unavailable)
+  return await getCommitAuthor(repoRoot, commitSha);
+}
+
+/**
+ * Gets git user info from git config (for local uncommitted changes).
+ * This represents who is currently working on the changes and will commit them.
+ * 
+ * No fallbacks - if git config is not set or fails, throws an error.
+ */
+async function getGitConfigUser(repoRoot: string): Promise<{ name: string; email: string }> {
+  const git = simpleGit(repoRoot);
+  
+  try {
+    const name = await git.getConfig('user.name');
+    const email = await git.getConfig('user.email');
+    
+    if (!name.value || !email.value) {
+      throw new Error(
+        'Git config user.name or user.email is not set. ' +
+        'Run: git config user.name "Your Name" && git config user.email "your.email@example.com"'
+      );
+    }
+    
+    return {
+      name: name.value.trim(),
+      email: email.value.trim()
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to get git config user: ${errorMessage}`);
+  }
 }
 
 /**

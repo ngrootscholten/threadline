@@ -28,7 +28,7 @@ expires TIMESTAMP NOT NULL
 
 ### 2. Column Naming Convention
 
-**STRICT RULE: Use snake_case only. A name is invalid if it contains ANY uppercase letters.**
+**STRICT RULE: Use snake_case only. A  name is invalid if it contains ANY uppercase letters.**
 
 **Evaluation Logic:**
 

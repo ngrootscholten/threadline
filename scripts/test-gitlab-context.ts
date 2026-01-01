@@ -87,7 +87,37 @@ async function main() {
   
   console.log('\n--- Commit Information ---');
   console.log(`Commit message (first line): ${runCommand('git log -1 --format=%s')}`);
-  console.log(`Commit author: ${runCommand('git log -1 --format=%an <%ae>')}`);
+  const commitAuthorName = runCommand('git log -1 --format=%an');
+  const commitAuthorEmail = runCommand('git log -1 --format=%ae');
+  console.log(`Commit author (from git): ${commitAuthorName} <${commitAuthorEmail}>`);
+  
+  // Test CI_COMMIT_AUTHOR parsing
+  const ciCommitAuthor = process.env.CI_COMMIT_AUTHOR;
+  console.log(`\n--- CI_COMMIT_AUTHOR Environment Variable ---`);
+  if (ciCommitAuthor) {
+    console.log(`  Raw value: ${ciCommitAuthor}`);
+    // Parse "name <email>" format
+    const match = ciCommitAuthor.match(/^(.+?)\s*<(.+?)>$/);
+    if (match) {
+      const parsedName = match[1].trim();
+      const parsedEmail = match[2].trim();
+      console.log(`  Parsed name: ${parsedName}`);
+      console.log(`  Parsed email: ${parsedEmail}`);
+      console.log(`  Status: ✅ AVAILABLE and parseable`);
+      
+      // Compare with git log result
+      if (commitAuthorName && commitAuthorEmail && !commitAuthorName.includes('ERROR')) {
+        const matches = parsedName === commitAuthorName && parsedEmail === commitAuthorEmail;
+        console.log(`  Matches git log: ${matches ? '✅ YES' : '⚠️  NO (may be different due to git config vs commit author)'}`);
+      }
+    } else {
+      console.log(`  Status: ⚠️  AVAILABLE but format unexpected`);
+      console.log(`  Expected format: "name <email>"`);
+    }
+  } else {
+    console.log(`  Status: ❌ NOT AVAILABLE`);
+  }
+  
   console.log(`Commit date: ${runCommand('git log -1 --format=%ai')}`);
   
   console.log('\n--- Commit Parents (for merge detection) ---');
@@ -330,6 +360,17 @@ async function main() {
     console.log(`  ✅ Feature Branch Push: Use origin/${ciDefaultBranch} vs origin/${currentRefName}`);
   } else {
     console.log(`  ⚠️  Direct Push to Default (not merge): Use HEAD~1 vs HEAD`);
+  }
+  
+  console.log(`\nCommit Author Detection:`);
+  const ciCommitAuthor = process.env.CI_COMMIT_AUTHOR;
+  if (ciCommitAuthor) {
+    console.log(`  ✅ Use CI_COMMIT_AUTHOR environment variable (most reliable)`);
+    console.log(`     Format: "name <email>"`);
+    console.log(`     Value: ${ciCommitAuthor}`);
+    console.log(`     This is more reliable than git commands, especially in shallow clones.`);
+  } else {
+    console.log(`  ⚠️  CI_COMMIT_AUTHOR not available - fallback to git log`);
   }
   
   console.log('\n' + '='.repeat(60));

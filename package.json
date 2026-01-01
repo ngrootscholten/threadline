@@ -11,7 +11,8 @@
     "build:local": "next build && (npx -y threadlines check || true)",
     "start": "next start",
     "lint": "next lint",
-    "build:cli": "cd packages/cli && npm run build"
+    "build:cli": "cd packages/cli && npm run build",
+    "test:local-context": "npx tsx scripts/test-local-context.ts"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.11.1",
