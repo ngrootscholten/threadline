@@ -1,21 +1,12 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import Link from "next/link";
 
 export default function Home() {
   const { data: session, status } = useSession();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (status === "authenticated" && session) {
-      router.push("/dashboard");
-    }
-  }, [status, session, router]);
-
-  // Show loading or redirecting state
+  // Show loading state
   if (status === "loading") {
     return (
       <main className="min-h-screen flex items-center justify-center">
@@ -24,12 +15,7 @@ export default function Home() {
     );
   }
 
-  // If authenticated, we're redirecting (component will unmount)
-  if (status === "authenticated") {
-    return null;
-  }
-
-  // Show the public landing page for unauthenticated users
+  // Show the landing page for all users (authenticated users can still view it)
   return (
     <main className="min-h-screen">
       {/* Hero Section */}
@@ -45,12 +31,21 @@ export default function Home() {
               Define your rules or principles - your choice. Your codebase, your control.
             </p>
             <div className="flex gap-4 justify-center flex-wrap">
-              <Link
-                href="/auth/signup"
-                className="px-8 py-4 bg-green-400 text-black font-semibold rounded-lg hover:bg-green-500 transition-all shadow-lg shadow-green-500/25"
-              >
-                Get Started
-              </Link>
+              {status === "authenticated" ? (
+                <Link
+                  href="/dashboard"
+                  className="px-8 py-4 bg-green-400 text-black font-semibold rounded-lg hover:bg-green-500 transition-all shadow-lg shadow-green-500/25"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/auth/signup"
+                  className="px-8 py-4 bg-green-400 text-black font-semibold rounded-lg hover:bg-green-500 transition-all shadow-lg shadow-green-500/25"
+                >
+                  Get Started
+                </Link>
+              )}
               <Link
                 href="/product"
                 className="px-8 py-4 border border-slate-700 text-slate-300 font-semibold rounded-lg hover:border-slate-600 hover:text-white transition-all"
@@ -119,15 +114,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800 mt-24">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="text-center text-slate-500">
-            <p>Threadline - Active Documentation, Parallel AI Checks, and Full Auditability</p>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }
