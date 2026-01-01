@@ -1,6 +1,6 @@
 {
   "name": "threadlines",
-  "version": "0.1.32",
+  "version": "0.1.33",
   "description": "Threadline CLI - AI-powered linter based on your natural language documentation",
   "main": "dist/index.js",
   "bin": {
@@ -27,7 +27,7 @@
     "directory": "packages/cli"
   },
   "scripts": {
-    "build": "npm run check && (npm run threadlines || exit 0) && tsc",
+    "build": "npm run check && tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build",

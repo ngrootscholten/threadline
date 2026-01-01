@@ -215,7 +215,7 @@ export async function checkCommand(options: {
     // 6. Call review API
     console.log(chalk.gray('🤖 Running threadline checks...'));
     const client = new ReviewAPIClient(apiUrl);
-    const response = await client.review({
+    const reviewRequest = {
       threadlines: threadlinesWithContext,
       diff: gitDiff.diff,
       files: gitDiff.changedFiles,
@@ -229,7 +229,9 @@ export async function checkCommand(options: {
       commitAuthorEmail: metadata.commitAuthorEmail,
       prTitle: metadata.prTitle,
       environment: environment
-    });
+    };
+    console.log(`[DEBUG] Sending to API - commitAuthorName: ${reviewRequest.commitAuthorName}, commitAuthorEmail: ${reviewRequest.commitAuthorEmail}`);
+    const response = await client.review(reviewRequest);
 
     // 7. Display results (with filtering if --full not specified)
     displayResults(response, options.full || false);
