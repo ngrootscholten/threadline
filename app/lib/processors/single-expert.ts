@@ -16,6 +16,18 @@ export interface ProcessThreadlineResult extends ExpertResult {
   relevantFiles: string[]; // Files that matched threadline patterns
   filteredDiff: string; // The actual diff sent to LLM (filtered to only relevant files)
   filesInFilteredDiff: string[]; // Files actually present in the filtered diff sent to LLM
+  llmCallMetrics?: {
+    startedAt: string; // ISO 8601
+    finishedAt: string; // ISO 8601
+    responseTimeMs: number;
+    tokens?: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    } | null;
+    status: 'success' | 'timeout' | 'error';
+    errorMessage?: string | null;
+  };
 }
 
 export async function processThreadline(
@@ -59,65 +71,122 @@ export async function processThreadline(
 
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
   console.log(`   🤖 Calling LLM (${model}) for ${threadline.id}...`);
-  const response = await openai.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: 'system',
-        content: 'You are a code quality checker. Analyze code changes against the threadline guidelines. Be precise - only flag actual violations. Return only valid JSON, no other text.'
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.1
-  });
+  
+  // Capture timing for LLM call
+  const llmCallStartedAt = new Date().toISOString();
+  let llmCallFinishedAt: string;
+  let llmCallResponseTimeMs: number;
+  let llmCallTokens: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null = null;
+  let llmCallStatus: 'success' | 'timeout' | 'error' = 'success';
+  let llmCallErrorMessage: string | null = null;
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error('No response from LLM');
-  }
+  try {
+    const response = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a code quality checker. Analyze code changes against the threadline guidelines. Be precise - only flag actual violations. Return only valid JSON, no other text.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.1
+    });
 
-  console.log(`   📄 Raw LLM response: ${content.substring(0, 200)}...`);
-  
-  const parsed = JSON.parse(content);
-  
-  console.log(`   ✅ Parsed: status=${parsed.status}, reasoning=${parsed.reasoning?.substring(0, 100)}...`);
-  
-  // Extract file references - rely entirely on LLM to provide them
-  let fileReferences: string[] = [];
-  
-  if (parsed.file_references && Array.isArray(parsed.file_references) && parsed.file_references.length > 0) {
-    // LLM provided file references - validate they're in filesInFilteredDiff
-    fileReferences = parsed.file_references.filter((file: string) => filesInFilteredDiff.includes(file));
-    if (parsed.file_references.length !== fileReferences.length) {
-      console.log(`   ⚠️  Warning: LLM provided ${parsed.file_references.length} file references, but only ${fileReferences.length} match the files sent to LLM`);
-    }
-  } else {
-    // LLM did not provide file_references
-    const status = parsed.status || 'not_relevant';
+    llmCallFinishedAt = new Date().toISOString();
+    llmCallResponseTimeMs = new Date(llmCallFinishedAt).getTime() - new Date(llmCallStartedAt).getTime();
     
-    if (status === 'attention') {
-      // This is a problem - we have violations but don't know which files
-      console.error(`   ❌ Error: LLM returned "attention" status but no file_references for threadline ${threadline.id}`);
-      console.error(`   Cannot accurately report violations without file references. This may indicate a prompt/LLM issue.`);
-      // Return empty file references - better than guessing
-      fileReferences = [];
+    // Capture token usage if available
+    if (response.usage) {
+      llmCallTokens = {
+        prompt_tokens: response.usage.prompt_tokens,
+        completion_tokens: response.usage.completion_tokens,
+        total_tokens: response.usage.total_tokens
+      };
     }
-    // For "compliant" or "not_relevant" status, file references are optional
-  }
 
-  return {
-    expertId: threadline.id,
-    status: parsed.status || 'not_relevant',
-    reasoning: parsed.reasoning,
-    fileReferences: fileReferences,
-    relevantFiles: relevantFiles,
-    filteredDiff: filteredDiff,
-    filesInFilteredDiff: filesInFilteredDiff
-  };
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from LLM');
+    }
+
+    console.log(`   📄 Raw LLM response: ${content.substring(0, 200)}...`);
+    
+    const parsed = JSON.parse(content);
+    
+    console.log(`   ✅ Parsed: status=${parsed.status}, reasoning=${parsed.reasoning?.substring(0, 100)}...`);
+    
+    // Extract file references - rely entirely on LLM to provide them
+    let fileReferences: string[] = [];
+    
+    if (parsed.file_references && Array.isArray(parsed.file_references) && parsed.file_references.length > 0) {
+      // LLM provided file references - validate they're in filesInFilteredDiff
+      fileReferences = parsed.file_references.filter((file: string) => filesInFilteredDiff.includes(file));
+      if (parsed.file_references.length !== fileReferences.length) {
+        console.log(`   ⚠️  Warning: LLM provided ${parsed.file_references.length} file references, but only ${fileReferences.length} match the files sent to LLM`);
+      }
+    } else {
+      // LLM did not provide file_references
+      const status = parsed.status || 'not_relevant';
+      
+      if (status === 'attention') {
+        // This is a problem - we have violations but don't know which files
+        console.error(`   ❌ Error: LLM returned "attention" status but no file_references for threadline ${threadline.id}`);
+        console.error(`   Cannot accurately report violations without file references. This may indicate a prompt/LLM issue.`);
+        // Return empty file references - better than guessing
+        fileReferences = [];
+      }
+      // For "compliant" or "not_relevant" status, file references are optional
+    }
+
+    return {
+      expertId: threadline.id,
+      status: parsed.status || 'not_relevant',
+      reasoning: parsed.reasoning,
+      fileReferences: fileReferences,
+      relevantFiles: relevantFiles,
+      filteredDiff: filteredDiff,
+      filesInFilteredDiff: filesInFilteredDiff,
+      llmCallMetrics: {
+        startedAt: llmCallStartedAt,
+        finishedAt: llmCallFinishedAt,
+        responseTimeMs: llmCallResponseTimeMs,
+        tokens: llmCallTokens,
+        status: llmCallStatus,
+        errorMessage: llmCallErrorMessage
+      }
+    };
+  } catch (error: any) {
+    // Capture error timing
+    llmCallFinishedAt = new Date().toISOString();
+    llmCallResponseTimeMs = new Date(llmCallFinishedAt).getTime() - new Date(llmCallStartedAt).getTime();
+    llmCallStatus = 'error';
+    llmCallErrorMessage = error?.message || 'Unknown error';
+    
+    // Return error result with metrics instead of throwing
+    // This allows metrics to be captured even when LLM call fails
+    return {
+      expertId: threadline.id,
+      status: 'not_relevant',
+      reasoning: `Error: ${error?.message || 'Unknown error'}`,
+      fileReferences: [],
+      relevantFiles: relevantFiles,
+      filteredDiff: filteredDiff,
+      filesInFilteredDiff: filesInFilteredDiff,
+      llmCallMetrics: {
+        startedAt: llmCallStartedAt,
+        finishedAt: llmCallFinishedAt,
+        responseTimeMs: llmCallResponseTimeMs,
+        tokens: llmCallTokens,
+        status: llmCallStatus,
+        errorMessage: llmCallErrorMessage
+      }
+    };
+  }
 }
 
 function matchesPattern(filePath: string, pattern: string): boolean {

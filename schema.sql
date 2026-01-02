@@ -212,6 +212,16 @@ CREATE TABLE IF NOT EXISTS check_diffs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS check_metrics (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
+  check_threadline_id TEXT REFERENCES check_threadlines(id) ON DELETE CASCADE,
+  metric_type TEXT NOT NULL CHECK (metric_type IN ('llm_call', 'check_summary')),
+  metrics JSONB NOT NULL,
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Indexes for audit tables
 CREATE INDEX IF NOT EXISTS idx_checks_user_id ON checks(user_id);
 CREATE INDEX IF NOT EXISTS idx_checks_account ON checks(account);
@@ -245,6 +255,12 @@ CREATE INDEX IF NOT EXISTS idx_check_results_status ON check_results(status);
 CREATE INDEX IF NOT EXISTS idx_check_results_created_at ON check_results(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_check_diffs_check_id ON check_diffs(check_id);
 
+-- Indexes for check_metrics
+CREATE INDEX IF NOT EXISTS idx_check_metrics_check_id ON check_metrics(check_id);
+CREATE INDEX IF NOT EXISTS idx_check_metrics_check_threadline_id ON check_metrics(check_threadline_id);
+CREATE INDEX IF NOT EXISTS idx_check_metrics_type ON check_metrics(metric_type);
+CREATE INDEX IF NOT EXISTS idx_check_metrics_recorded_at ON check_metrics(recorded_at DESC);
+
 -- Enable RLS on audit tables
 ALTER TABLE checks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE threadline_definitions ENABLE ROW LEVEL SECURITY;
@@ -252,4 +268,5 @@ ALTER TABLE context_file_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_threadlines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_diffs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE check_metrics ENABLE ROW LEVEL SECURITY;
 
