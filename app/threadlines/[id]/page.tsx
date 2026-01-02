@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 
@@ -21,7 +21,9 @@ export default function ThreadlineDetailPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const threadlineId = params.id as string;
+  const fromCheck = searchParams.get('fromCheck');
 
   const [threadline, setThreadline] = useState<ThreadlineDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,9 +83,15 @@ export default function ThreadlineDetailPage() {
         <section className="max-w-7xl mx-auto px-6 py-24">
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 md:p-12">
             <div className="mb-6">
-              <Link href="/threadlines" className="text-green-400 hover:text-green-300 transition-colors">
-                ← Back to Threadlines
-              </Link>
+              {fromCheck ? (
+                <Link href={`/check/${fromCheck}`} className="text-green-400 hover:text-green-300 transition-colors">
+                  ← Back to Check
+                </Link>
+              ) : (
+                <Link href="/threadlines" className="text-green-400 hover:text-green-300 transition-colors">
+                  ← Back to Threadlines
+                </Link>
+              )}
             </div>
             <p className="text-red-400">{error || "Threadline not found"}</p>
           </div>
@@ -137,9 +145,15 @@ export default function ThreadlineDetailPage() {
     <main className="min-h-screen">
       <section className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-6">
-          <Link href="/threadlines" className="text-green-400 hover:text-green-300 transition-colors">
-            ← Back to Threadlines
-          </Link>
+          {fromCheck ? (
+            <Link href={`/check/${fromCheck}`} className="text-green-400 hover:text-green-300 transition-colors">
+              ← Back to Check
+            </Link>
+          ) : (
+            <Link href="/threadlines" className="text-green-400 hover:text-green-300 transition-colors">
+              ← Back to Threadlines
+            </Link>
+          )}
         </div>
 
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 md:p-12">

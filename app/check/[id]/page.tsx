@@ -37,6 +37,7 @@ interface CheckSummary {
   threadlines: Array<{
     checkThreadlineId: string;
     threadlineId: string;
+    threadlineDefinitionId: string;
     version: string;
     status: string;
     resultId: string | null;
@@ -48,6 +49,7 @@ interface CheckSummary {
 interface ThreadlineDetail {
   checkThreadlineId: string;
   threadlineId: string;
+  threadlineDefinitionId: string;
   version: string;
   patterns: string[];
   content: string;
@@ -333,30 +335,36 @@ export default function CheckDetailPage() {
                   className="border border-slate-800 rounded-lg bg-slate-950/30 overflow-hidden"
                 >
                   {/* Collapsed Summary */}
-                  <button
+                  <div 
                     onClick={() => toggleThreadline(threadline.threadlineId)}
-                    className="w-full p-4 text-left hover:bg-slate-800/50 transition-colors flex items-center justify-between"
+                    className="w-full p-4 hover:bg-slate-800/50 transition-colors flex items-center justify-between cursor-pointer"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(threadline.status)}`}>
                         {threadline.status}
                       </span>
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">
+                      <div className="flex-1">
+                        <Link
+                          href={`/threadlines/${threadline.threadlineDefinitionId}?fromCheck=${checkId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-lg font-semibold text-white hover:underline"
+                        >
                           {threadline.threadlineId}
-                        </h3>
+                        </Link>
                         <p className="text-sm text-slate-400">Version {threadline.version}</p>
                       </div>
                     </div>
-                    <svg
-                      className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                    <div className="p-2">
+                      <svg
+                        className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
 
                   {/* Expanded Content */}
                   {isExpanded && (

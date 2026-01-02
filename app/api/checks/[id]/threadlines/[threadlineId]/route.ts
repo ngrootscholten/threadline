@@ -43,6 +43,7 @@ export async function GET(
       `SELECT 
         ct.id as check_threadline_id,
         ct.threadline_id,
+        ct.threadline_definition_id,
         td.threadline_version,
         td.threadline_patterns,
         td.threadline_content,
@@ -87,6 +88,7 @@ export async function GET(
       threadline: {
         checkThreadlineId: row.check_threadline_id,
         threadlineId: row.threadline_id,
+        threadlineDefinitionId: row.threadline_definition_id,
         version: row.threadline_version,
         patterns: row.threadline_patterns,
         content: row.threadline_content,

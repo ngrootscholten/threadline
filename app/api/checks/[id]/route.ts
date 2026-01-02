@@ -64,6 +64,7 @@ export async function GET(
       `SELECT 
         ct.id as check_threadline_id,
         ct.threadline_id,
+        ct.threadline_definition_id,
         td.threadline_version,
         cr.id as result_id,
         cr.status,
@@ -80,6 +81,7 @@ export async function GET(
     const threadlines = threadlinesResult.rows.map(row => ({
       checkThreadlineId: row.check_threadline_id,
       threadlineId: row.threadline_id,
+      threadlineDefinitionId: row.threadline_definition_id,
       version: row.threadline_version,
       status: row.status || 'not_relevant',
       resultId: row.result_id || null,
