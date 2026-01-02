@@ -15,6 +15,7 @@ Our code should be fact-based and show errors clearly. We should never silently 
 
 ## Guidelines
 
+
 1. **No silent fallbacks** - Don't catch errors and silently continue or return null without logging. Multiple silent fallbacks make code harder to maintain because you lose track of which code paths were intended or expected to work.
    - **Note**: Error propagation (where errors bubble up and fail loudly) is acceptable and NOT a silent fallback. Silent fallbacks specifically refer to trying alternative methods when one fails (e.g., try method A, if it fails silently try method B).
 2. **No guesses** - Don't assume values or make up defaults without clear evidence

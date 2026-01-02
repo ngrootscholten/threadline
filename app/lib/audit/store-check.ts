@@ -3,6 +3,7 @@ import { ReviewRequest } from '../../api/threadline-check/route';
 import { ProcessThreadlinesResponse } from '../processors/expert';
 import { ExpertResult } from '../types/result';
 import { ProcessThreadlineResult } from '../processors/single-expert';
+import { generateVersionHash, generateIdentityHash } from './threadline-hash';
 
 interface StoreCheckParams {
   request: ReviewRequest;
@@ -111,33 +112,87 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
       const threadlineResult = resultMap.get(threadline.id);
       const isProcessThreadlineResult = threadlineResult && 'relevantFiles' in threadlineResult;
       
-        
-      // Step 1: Create threadline_definition (always create new, no deduplication yet)
-      const definitionResult = await pool.query(
-        `INSERT INTO threadline_definitions (
-          threadline_id,
-          threadline_file_path,
-          threadline_version,
-          threadline_patterns,
-          threadline_content,
-          repo_name,
-          account,
-          predecessor_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id`,
-        [
-          threadline.id,
-          threadline.filePath,
-          threadline.version,
-          JSON.stringify(threadline.patterns),
-          threadline.content,
-          request.repoName || null,
-          request.account,
-          null // No predecessor for now (no deduplication)
-        ]
+      // Generate hashes for deduplication
+      const versionHash = generateVersionHash({
+        threadlineId: threadline.id,
+        filePath: threadline.filePath,
+        patterns: threadline.patterns,
+        content: threadline.content,
+        version: threadline.version,
+        repoName: request.repoName || null,
+        account: request.account,
+      });
+      
+      const identityHash = generateIdentityHash({
+        threadlineId: threadline.id,
+        filePath: threadline.filePath,
+        repoName: request.repoName || null,
+        account: request.account,
+      });
+
+      let threadlineDefinitionId: string;
+
+      // Step 1: Check if exact version already exists (version_hash match)
+      const existingVersionResult = await pool.query(
+        `SELECT id FROM threadline_definitions WHERE version_hash = $1 LIMIT 1`,
+        [versionHash]
       );
 
-      const threadlineDefinitionId = definitionResult.rows[0].id;
+      if (existingVersionResult.rows.length > 0) {
+        // Exact match found - reuse existing definition
+        threadlineDefinitionId = existingVersionResult.rows[0].id;
+        console.log(`   ♻️  Reusing existing threadline definition for "${threadline.id}"`);
+      } else {
+        // No exact match - check if this is a new version of existing threadline
+        const existingIdentityResult = await pool.query(
+          `SELECT id FROM threadline_definitions 
+           WHERE identity_hash = $1 
+           ORDER BY created_at DESC 
+           LIMIT 1`,
+          [identityHash]
+        );
+
+        const predecessorId = existingIdentityResult.rows.length > 0 
+          ? existingIdentityResult.rows[0].id 
+          : null;
+
+        // Create new definition (either new version or completely new threadline)
+        const definitionResult = await pool.query(
+          `INSERT INTO threadline_definitions (
+            threadline_id,
+            threadline_file_path,
+            threadline_version,
+            threadline_patterns,
+            threadline_content,
+            repo_name,
+            account,
+            predecessor_id,
+            version_hash,
+            identity_hash
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id`,
+          [
+            threadline.id,
+            threadline.filePath,
+            threadline.version,
+            JSON.stringify(threadline.patterns),
+            threadline.content,
+            request.repoName || null,
+            request.account,
+            predecessorId,
+            versionHash,
+            identityHash
+          ]
+        );
+
+        threadlineDefinitionId = definitionResult.rows[0].id;
+
+        if (predecessorId) {
+          console.log(`   🆕 Created new version of threadline "${threadline.id}" (predecessor: ${predecessorId.substring(0, 8)}...)`);
+        } else {
+          console.log(`   ✨ Created new threadline definition for "${threadline.id}"`);
+        }
+      }
 
       // Step 2: Insert check_threadlines with reference to definition
       const threadlineInsertResult = await pool.query(

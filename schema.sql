@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS checks (
 -- Threadline definitions table - stores deduplicated threadline content
 -- Repository-scoped: same threadline_id in different repos = different definitions
 -- Account-scoped: definitions belong to an account (for access control)
+-- Deduplication: version_hash identifies exact version, identity_hash identifies threadline across versions
 CREATE TABLE IF NOT EXISTS threadline_definitions (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   threadline_id TEXT NOT NULL,
@@ -164,6 +165,8 @@ CREATE TABLE IF NOT EXISTS threadline_definitions (
   repo_name TEXT, -- Repository where this threadline definition exists
   account TEXT NOT NULL, -- Account that owns this threadline definition
   predecessor_id TEXT REFERENCES threadline_definitions(id), -- Optional: points to earlier version
+  version_hash TEXT, -- SHA256 hash of (id, filePath, patterns, content, version, repoName, account) - unique per version
+  identity_hash TEXT, -- SHA256 hash of (id, filePath, repoName, account) - same across versions
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -213,6 +216,8 @@ CREATE INDEX IF NOT EXISTS idx_threadline_definitions_repo_name ON threadline_de
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_account ON threadline_definitions(account);
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_account_repo ON threadline_definitions(account, repo_name);
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_created_at ON threadline_definitions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_version_hash ON threadline_definitions(version_hash);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_identity_hash ON threadline_definitions(identity_hash);
 
 -- Indexes for check_threadlines
 CREATE INDEX IF NOT EXISTS idx_check_threadlines_check_id ON check_threadlines(check_id);
