@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -18,6 +18,8 @@ export default function AccountPage() {
   const [companyError, setCompanyError] = useState<string | null>(null);
   const [nameSuccess, setNameSuccess] = useState(false);
   const [companySuccess, setCompanySuccess] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const companyInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize form values from session
   useEffect(() => {
@@ -149,26 +151,62 @@ export default function AccountPage() {
               {editingName ? (
                 <div className="space-y-2">
                   <input
+                    ref={nameInputRef}
                     type="text"
                     value={nameValue}
                     onChange={(e) => setNameValue(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSaveName();
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        handleCancelName();
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Enter your name"
                     autoFocus
+                    disabled={savingName}
                   />
                   {nameError && (
-                    <p className="text-red-400 text-sm">{nameError}</p>
+                    <p className="text-red-400 text-sm flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {nameError}
+                    </p>
                   )}
                   {nameSuccess && (
-                    <p className="text-green-400 text-sm">✓ Name updated successfully</p>
+                    <p className="text-green-400 text-sm flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Name updated successfully
+                    </p>
                   )}
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveName}
                       disabled={savingName}
-                      className="px-4 py-2 bg-green-400 text-black font-semibold rounded-lg hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 bg-green-400 text-black font-semibold rounded-lg hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      {savingName ? "Saving..." : "Save"}
+                      {savingName ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Save
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={handleCancelName}
@@ -178,6 +216,7 @@ export default function AccountPage() {
                       Cancel
                     </button>
                   </div>
+                  <p className="text-xs text-slate-500">Press Enter to save, Esc to cancel</p>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 group">
@@ -186,8 +225,9 @@ export default function AccountPage() {
                   </p>
                   <button
                     onClick={() => setEditingName(true)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-slate-800"
                     title="Edit name"
+                    aria-label="Edit name"
                   >
                     <svg
                       className="w-4 h-4 text-slate-400 hover:text-white"
@@ -215,26 +255,62 @@ export default function AccountPage() {
               {editingCompany ? (
                 <div className="space-y-2">
                   <input
+                    ref={companyInputRef}
                     type="text"
                     value={companyValue}
                     onChange={(e) => setCompanyValue(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSaveCompany();
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        handleCancelCompany();
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Enter your company name"
                     autoFocus
+                    disabled={savingCompany}
                   />
                   {companyError && (
-                    <p className="text-red-400 text-sm">{companyError}</p>
+                    <p className="text-red-400 text-sm flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {companyError}
+                    </p>
                   )}
                   {companySuccess && (
-                    <p className="text-green-400 text-sm">✓ Company updated successfully</p>
+                    <p className="text-green-400 text-sm flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Company updated successfully
+                    </p>
                   )}
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveCompany}
                       disabled={savingCompany}
-                      className="px-4 py-2 bg-green-400 text-black font-semibold rounded-lg hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 bg-green-400 text-black font-semibold rounded-lg hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      {savingCompany ? "Saving..." : "Save"}
+                      {savingCompany ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Save
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={handleCancelCompany}
@@ -244,6 +320,7 @@ export default function AccountPage() {
                       Cancel
                     </button>
                   </div>
+                  <p className="text-xs text-slate-500">Press Enter to save, Esc to cancel</p>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 group">
@@ -252,8 +329,9 @@ export default function AccountPage() {
                   </p>
                   <button
                     onClick={() => setEditingCompany(true)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-slate-800"
                     title="Edit company"
+                    aria-label="Edit company"
                   >
                     <svg
                       className="w-4 h-4 text-slate-400 hover:text-white"

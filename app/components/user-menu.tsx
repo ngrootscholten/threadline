@@ -77,7 +77,10 @@ export function UserMenu() {
     );
   }
 
-  const displayName = extractDisplayName(session.user?.email);
+  // Use name if set, otherwise fallback to email-based extraction
+  const displayName = session.user?.name 
+    ? session.user.name 
+    : extractDisplayName(session.user?.email);
 
   return (
     <div className="relative" ref={dropdownRef}>
