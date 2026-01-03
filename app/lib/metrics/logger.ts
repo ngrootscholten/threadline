@@ -39,16 +39,18 @@ export interface CheckSummaryMetrics {
  */
 export async function logLLMCallMetrics(
   checkId: string,
+  accountId: string,
   checkThreadlineId: string | null,
   metrics: LLMCallMetrics
 ): Promise<void> {
   try {
     const pool = getPool();
     await pool.query(
-      `INSERT INTO check_metrics (check_id, check_threadline_id, metric_type, metrics)
-       VALUES ($1, $2, 'llm_call', $3)`,
+      `INSERT INTO check_metrics (check_id, account_id, check_threadline_id, metric_type, metrics)
+       VALUES ($1, $2, $3, 'llm_call', $4)`,
       [
         checkId,
+        accountId,
         checkThreadlineId,
         JSON.stringify(metrics)
       ]
@@ -64,15 +66,17 @@ export async function logLLMCallMetrics(
  */
 export async function logCheckSummaryMetrics(
   checkId: string,
+  accountId: string,
   metrics: CheckSummaryMetrics
 ): Promise<void> {
   try {
     const pool = getPool();
     await pool.query(
-      `INSERT INTO check_metrics (check_id, check_threadline_id, metric_type, metrics)
-       VALUES ($1, NULL, 'check_summary', $2)`,
+      `INSERT INTO check_metrics (check_id, account_id, check_threadline_id, metric_type, metrics)
+       VALUES ($1, $2, NULL, 'check_summary', $3)`,
       [
         checkId,
+        accountId,
         JSON.stringify(metrics)
       ]
     );

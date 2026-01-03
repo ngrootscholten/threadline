@@ -99,8 +99,8 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
     // The diff is stored exactly as received from git, in unified diff format
     // This format is compatible with: git apply, patch command, GitHub/GitLab, most tools
     await pool.query(
-      `INSERT INTO check_diffs (check_id, diff_content, diff_format) VALUES ($1, $2, 'unified')`,
-      [checkId, request.diff]
+      `INSERT INTO check_diffs (check_id, account_id, diff_content, diff_format) VALUES ($1, $2, $3, 'unified')`,
+      [checkId, accountId, request.diff]
     );
 
     // 3. Insert threadlines and their results
@@ -122,14 +122,14 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
         content: threadline.content,
         version: threadline.version,
         repoName: request.repoName || null,
-        account: request.account,
+        accountId: accountId,
       });
       
       const identityHash = generateIdentityHash({
         threadlineId: threadline.id,
         filePath: threadline.filePath,
         repoName: request.repoName || null,
-        account: request.account,
+        accountId: accountId,
       });
 
       let threadlineDefinitionId: string;
@@ -167,7 +167,7 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
             threadline_patterns,
             threadline_content,
             repo_name,
-            account,
+            account_id,
             predecessor_id,
             version_hash,
             identity_hash
@@ -180,7 +180,7 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
             JSON.stringify(threadline.patterns),
             threadline.content,
             request.repoName || null,
-            request.account,
+            accountId,
             predecessorId,
             versionHash,
             identityHash
@@ -204,7 +204,7 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
       if (threadline.contextContent) {
         for (const [filePath, content] of Object.entries(threadline.contextContent)) {
           const contentHash = generateContextHash({
-            account: request.account,
+            accountId: accountId,
             repoName: request.repoName || null,
             filePath,
             content,
@@ -223,10 +223,10 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
           } else {
             // Create new snapshot
             const newSnapshot = await pool.query(
-              `INSERT INTO context_file_snapshots (account, repo_name, file_path, content, content_hash)
+              `INSERT INTO context_file_snapshots (account_id, repo_name, file_path, content, content_hash)
                VALUES ($1, $2, $3, $4, $5)
                RETURNING id`,
-              [request.account, request.repoName || null, filePath, content, contentHash]
+              [accountId, request.repoName || null, filePath, content, contentHash]
             );
             contextSnapshotIds.push(newSnapshot.rows[0].id);
             contextFilesCreated++;
@@ -242,16 +242,18 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
       const threadlineInsertResult = await pool.query(
         `INSERT INTO check_threadlines (
           check_id,
+          account_id,
           threadline_id,
           threadline_definition_id,
           context_snapshot_ids,
           relevant_files,
           filtered_diff,
           files_in_filtered_diff
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id`,
         [
           checkId,
+          accountId,
           threadline.id,
           threadlineDefinitionId,
           contextSnapshotIds,
@@ -268,12 +270,14 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
         await pool.query(
           `INSERT INTO check_results (
             check_threadline_id,
+            account_id,
             status,
             reasoning,
             file_references
-          ) VALUES ($1, $2, $3, $4)`,
+          ) VALUES ($1, $2, $3, $4, $5)`,
           [
             checkThreadlineId,
+            accountId,
             threadlineResult.status,
             threadlineResult.reasoning || null,
             threadlineResult.fileReferences ? JSON.stringify(threadlineResult.fileReferences) : null

@@ -37,23 +37,8 @@ export async function GET(req: NextRequest) {
     
     const accountId = session.user.accountId;
     
-    // Get account identifier for threadline_definitions (still uses account TEXT field)
-    const accountResult = await pool.query(
-      `SELECT identifier FROM threadline_accounts WHERE id = $1`,
-      [accountId]
-    );
-    
-    if (accountResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Account not found' },
-        { status: 404 }
-      );
-    }
-    
-    const accountIdentifier = accountResult.rows[0].identifier;
-    
     // Get total count and paginated results in one query
-    // Filter by account identifier (threadline_definitions still uses account TEXT field)
+    // Filter by account_id FK
     const result = await pool.query(
       `SELECT 
         td.id,
@@ -63,10 +48,10 @@ export async function GET(req: NextRequest) {
         td.created_at,
         COUNT(*) OVER() as total_count
       FROM threadline_definitions td
-      WHERE td.account = $1
+      WHERE td.account_id = $1
       ORDER BY td.created_at DESC
       LIMIT $2 OFFSET $3`,
-      [accountIdentifier, limit, offset]
+      [accountId, limit, offset]
     );
 
     const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;

@@ -181,22 +181,22 @@ CREATE TABLE IF NOT EXISTS threadline_definitions (
   threadline_patterns JSONB NOT NULL,
   threadline_content TEXT NOT NULL,
   repo_name TEXT, -- Repository where this threadline definition exists
-  account TEXT NOT NULL, -- Account that owns this threadline definition
+  account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE, -- Account that owns this threadline definition
   predecessor_id TEXT REFERENCES threadline_definitions(id), -- Optional: points to earlier version
-  version_hash TEXT, -- SHA256 hash of (id, filePath, patterns, content, version, repoName, account) - unique per version
-  identity_hash TEXT, -- SHA256 hash of (id, filePath, repoName, account) - same across versions
+  version_hash TEXT, -- SHA256 hash of (id, filePath, patterns, content, version, repoName, account_id) - unique per version
+  identity_hash TEXT, -- SHA256 hash of (id, filePath, repoName, account_id) - same across versions
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Context file snapshots - deduplicated storage of context file contents
--- Each unique (account, repo_name, file_path, content) combination is stored once
+-- Each unique (account_id, repo_name, file_path, content) combination is stored once
 CREATE TABLE IF NOT EXISTS context_file_snapshots (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  account TEXT NOT NULL,
+  account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE,
   repo_name TEXT,
   file_path TEXT NOT NULL,
   content TEXT NOT NULL,
-  content_hash TEXT NOT NULL, -- SHA256 of (account, repo_name, file_path, content) for deduplication
+  content_hash TEXT NOT NULL, -- SHA256 of (account_id, repo_name, file_path, content) for deduplication
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS context_file_snapshots (
 CREATE TABLE IF NOT EXISTS check_threadlines (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
+  account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE, -- Tenant key for multi-tenancy
   threadline_id TEXT NOT NULL, -- Kept for query convenience
   threadline_definition_id TEXT NOT NULL REFERENCES threadline_definitions(id), -- Reference to definition (contains file_path, patterns, content, version)
   context_snapshot_ids TEXT[], -- Array of context_file_snapshots IDs (replaces context_files + context_content)
@@ -216,6 +217,7 @@ CREATE TABLE IF NOT EXISTS check_threadlines (
 CREATE TABLE IF NOT EXISTS check_results (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   check_threadline_id TEXT NOT NULL REFERENCES check_threadlines(id) ON DELETE CASCADE,
+  account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE, -- Tenant key for multi-tenancy
   status TEXT NOT NULL CHECK (status IN ('compliant', 'attention', 'not_relevant')),
   reasoning TEXT,
   file_references JSONB,
@@ -225,6 +227,7 @@ CREATE TABLE IF NOT EXISTS check_results (
 CREATE TABLE IF NOT EXISTS check_diffs (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE UNIQUE,
+  account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE, -- Tenant key for multi-tenancy
   diff_content TEXT NOT NULL,
   diff_format TEXT DEFAULT 'unified',
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -234,6 +237,7 @@ CREATE TABLE IF NOT EXISTS check_metrics (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
   check_threadline_id TEXT REFERENCES check_threadlines(id) ON DELETE CASCADE,
+  account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE, -- Tenant key for multi-tenancy
   metric_type TEXT NOT NULL CHECK (metric_type IN ('llm_call', 'check_summary')),
   metrics JSONB NOT NULL,
   recorded_at TIMESTAMPTZ DEFAULT NOW(),
@@ -254,25 +258,33 @@ CREATE INDEX IF NOT EXISTS idx_threadline_definitions_file_path ON threadline_de
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_threadline_file ON threadline_definitions(threadline_id, threadline_file_path);
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_predecessor ON threadline_definitions(predecessor_id);
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_repo_name ON threadline_definitions(repo_name);
-CREATE INDEX IF NOT EXISTS idx_threadline_definitions_account ON threadline_definitions(account);
-CREATE INDEX IF NOT EXISTS idx_threadline_definitions_account_repo ON threadline_definitions(account, repo_name);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_account_id ON threadline_definitions(account_id);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_account_id_repo ON threadline_definitions(account_id, repo_name);
+CREATE INDEX IF NOT EXISTS idx_threadline_definitions_account_id_created_at ON threadline_definitions(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_created_at ON threadline_definitions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_version_hash ON threadline_definitions(version_hash);
 CREATE INDEX IF NOT EXISTS idx_threadline_definitions_identity_hash ON threadline_definitions(identity_hash);
 
 -- Indexes for context_file_snapshots
 CREATE INDEX IF NOT EXISTS idx_context_file_snapshots_content_hash ON context_file_snapshots(content_hash);
-CREATE INDEX IF NOT EXISTS idx_context_file_snapshots_account ON context_file_snapshots(account);
-CREATE INDEX IF NOT EXISTS idx_context_file_snapshots_account_repo ON context_file_snapshots(account, repo_name);
+CREATE INDEX IF NOT EXISTS idx_context_file_snapshots_account_id ON context_file_snapshots(account_id);
+CREATE INDEX IF NOT EXISTS idx_context_file_snapshots_account_id_repo ON context_file_snapshots(account_id, repo_name);
 
 -- Indexes for check_threadlines
 CREATE INDEX IF NOT EXISTS idx_check_threadlines_check_id ON check_threadlines(check_id);
+CREATE INDEX IF NOT EXISTS idx_check_threadlines_account_id ON check_threadlines(account_id);
+CREATE INDEX IF NOT EXISTS idx_check_threadlines_account_id_created_at ON check_threadlines(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_check_threadlines_threadline_id ON check_threadlines(threadline_id);
 CREATE INDEX IF NOT EXISTS idx_check_threadlines_definition_id ON check_threadlines(threadline_definition_id);
 CREATE INDEX IF NOT EXISTS idx_check_results_check_threadline_id ON check_results(check_threadline_id);
+CREATE INDEX IF NOT EXISTS idx_check_results_account_id ON check_results(account_id);
+CREATE INDEX IF NOT EXISTS idx_check_results_account_id_created_at ON check_results(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_check_results_status ON check_results(status);
 CREATE INDEX IF NOT EXISTS idx_check_results_created_at ON check_results(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_check_diffs_check_id ON check_diffs(check_id);
+CREATE INDEX IF NOT EXISTS idx_check_diffs_account_id ON check_diffs(account_id);
+CREATE INDEX IF NOT EXISTS idx_check_metrics_account_id ON check_metrics(account_id);
+CREATE INDEX IF NOT EXISTS idx_check_metrics_account_id_recorded_at ON check_metrics(account_id, recorded_at DESC);
 
 -- Indexes for check_metrics
 CREATE INDEX IF NOT EXISTS idx_check_metrics_check_id ON check_metrics(check_id);

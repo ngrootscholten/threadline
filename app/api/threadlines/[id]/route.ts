@@ -33,22 +33,7 @@ export async function GET(
     
     const accountId = session.user.accountId;
     
-    // Get account identifier for threadline_definitions (still uses account TEXT field)
-    const accountResult = await pool.query(
-      `SELECT identifier FROM threadline_accounts WHERE id = $1`,
-      [accountId]
-    );
-    
-    if (accountResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Account not found' },
-        { status: 404 }
-      );
-    }
-    
-    const accountIdentifier = accountResult.rows[0].identifier;
-    
-    // Get threadline definition (filtered by account identifier)
+    // Get threadline definition (filtered by account_id FK)
     const definitionResult = await pool.query(
       `SELECT 
         td.id,
@@ -60,8 +45,8 @@ export async function GET(
         td.repo_name,
         td.created_at
       FROM threadline_definitions td
-      WHERE td.id = $1 AND td.account = $2`,
-      [id, accountIdentifier]
+      WHERE td.id = $1 AND td.account_id = $2`,
+      [id, accountId]
     );
 
     if (definitionResult.rows.length === 0) {

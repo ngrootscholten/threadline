@@ -337,6 +337,7 @@ export async function POST(req: NextRequest) {
             
             await logLLMCallMetrics(
               checkId,
+              accountId!,
               checkThreadlineId,
               {
                 type: 'llm_call',
@@ -358,6 +359,7 @@ export async function POST(req: NextRequest) {
         // Log check summary metrics
         await logCheckSummaryMetrics(
           checkId,
+          accountId!,
           {
             type: 'check_summary',
             timing: {

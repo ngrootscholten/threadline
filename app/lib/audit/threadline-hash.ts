@@ -7,18 +7,18 @@ interface VersionHashInput {
   content: string;
   version: string;
   repoName: string | null;
-  account: string;
+  accountId: string; // account_id UUID from threadline_accounts
 }
 
 interface IdentityHashInput {
   threadlineId: string;
   filePath: string;
   repoName: string | null;
-  account: string;
+  accountId: string; // account_id UUID from threadline_accounts
 }
 
 interface ContextFileHashInput {
-  account: string;
+  accountId: string; // account_id UUID from threadline_accounts
   repoName: string | null;
   filePath: string;
   content: string;
@@ -46,7 +46,7 @@ export function generateVersionHash(input: VersionHashInput): string {
     content: normalizeLineEndings(input.content), // Normalize line endings for cross-platform consistency
     version: input.version,
     repoName: input.repoName || '',
-    account: input.account,
+    accountId: input.accountId, // account_id UUID
   });
   return crypto.createHash('sha256').update(data).digest('hex');
 }
@@ -61,7 +61,7 @@ export function generateIdentityHash(input: IdentityHashInput): string {
     threadlineId: input.threadlineId,
     filePath: input.filePath,
     repoName: input.repoName || '',
-    account: input.account,
+    accountId: input.accountId, // account_id UUID
   });
   return crypto.createHash('sha256').update(data).digest('hex');
 }
@@ -73,7 +73,7 @@ export function generateIdentityHash(input: IdentityHashInput): string {
  */
 export function generateContextHash(input: ContextFileHashInput): string {
   const data = JSON.stringify({
-    account: input.account,
+    accountId: input.accountId, // account_id UUID
     repoName: input.repoName || '',
     filePath: input.filePath,
     content: normalizeLineEndings(input.content), // Normalize line endings for cross-platform consistency
