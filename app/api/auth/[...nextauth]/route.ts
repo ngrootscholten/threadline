@@ -85,6 +85,17 @@ function getNextAuthConfig(): NextAuthConfig {
   },
   callbacks: {
     async signIn({ user }: { user: User }) {
+      // Check if user is active (only allow active users to sign in)
+      if (user.id) {
+        const pool = getPool()
+        const userResult = await pool.query(
+          `SELECT is_active FROM users WHERE id = $1`,
+          [user.id]
+        )
+        if (userResult.rows.length > 0 && userResult.rows[0].is_active === false) {
+          return false // Block inactive users from signing in
+        }
+      }
       // Standard NextAuth pattern for email/magic link providers:
       // - Allow magic link requests (emailVerified is null for new users)
       // - Allow verified users (emailVerified is a timestamp)
@@ -108,7 +119,7 @@ function getNextAuthConfig(): NextAuthConfig {
       if (token.id) {
         const pool = getPool()
         const userResult = await pool.query(
-          `SELECT id, email, name, company, "emailVerified", account_id FROM users WHERE id = $1`,
+          `SELECT id, email, name, company, "emailVerified", account_id, role, is_active FROM users WHERE id = $1`,
           [token.id]
         )
         
@@ -137,9 +148,9 @@ function getNextAuthConfig(): NextAuthConfig {
               if (accountResult.rows.length > 0) {
                 const accountId = accountResult.rows[0].id
                 
-                // Link user to account
+                // Link user to account and set role to account_admin for new sign-ups
                 await pool.query(
-                  `UPDATE users SET account_id = $1 WHERE id = $2`,
+                  `UPDATE users SET account_id = $1, role = 'account_admin' WHERE id = $2 AND role IS NULL`,
                   [accountId, user.id]
                 )
                 
@@ -160,6 +171,7 @@ function getNextAuthConfig(): NextAuthConfig {
             ;(session.user as any).company = user.company
             session.user.emailVerified = user.emailVerified
             ;(session.user as any).accountId = user.account_id || null
+            ;(session.user as any).role = user.role || null
           }
         }
       }
@@ -174,6 +186,9 @@ function getNextAuthConfig(): NextAuthConfig {
 // NextAuth will handle this gracefully (it may use a fallback or fail at runtime)
 const nextAuthConfig = getNextAuthConfig()
 export const { handlers, signIn, signOut, auth } = NextAuth(nextAuthConfig)
+
+// Export authOptions for use in other API routes (e.g., confirm-signin)
+export const authOptions = nextAuthConfig
 
 export const { GET, POST } = handlers
 

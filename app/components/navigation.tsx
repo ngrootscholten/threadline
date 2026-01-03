@@ -24,6 +24,11 @@ export function Navigation() {
                 <Link href="/threadlines" className="text-slate-300 hover:text-white transition-colors">
                   Threadlines
                 </Link>
+                {(session?.user as any)?.role === "account_admin" && (
+                  <Link href="/admin/users" className="text-slate-300 hover:text-white transition-colors">
+                    Admin
+                  </Link>
+                )}
                 <Link href="/docs/getting-started" className="text-slate-300 hover:text-white transition-colors">
                   Help
                 </Link>

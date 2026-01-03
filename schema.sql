@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS users (
       -- Our custom fields (snake_case):
       company TEXT, -- Custom field for user's company
       account_id TEXT REFERENCES threadline_accounts(id) ON DELETE SET NULL, -- FK to threadline_accounts
+      role TEXT DEFAULT 'account_admin' CHECK (role IN ('account_admin', 'regular_user')), -- User role for access control
+      is_active BOOLEAN DEFAULT true, -- User active status (for deactivation)
       
       -- Timestamps (snake_case - our convention):
       created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -121,6 +123,10 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions("userId"); -- Note: 
 CREATE INDEX IF NOT EXISTS idx_sessions_session_token ON sessions("sessionToken"); -- Note: camelCase column name
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_account_id ON users(account_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
+CREATE INDEX IF NOT EXISTS idx_users_account_id_role ON users(account_id, role);
+CREATE INDEX IF NOT EXISTS idx_users_account_id_is_active ON users(account_id, is_active);
 
 -- ============================================================================
 -- Threadline Accounts Table

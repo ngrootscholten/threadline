@@ -10,6 +10,7 @@ declare module "next-auth" {
       emailVerified: Date | null
       company?: string | null
       accountId?: string | null
+      role?: string | null
     } & DefaultSession["user"]
   }
 
@@ -23,6 +24,7 @@ declare module "next-auth" {
     image?: string | null
     emailVerified: Date | null
     company?: string | null
+    role?: string | null
   }
 }
 
@@ -37,6 +39,7 @@ declare module "next-auth/jwt" {
     company?: string | null
     emailVerified: Date | null
     accountId?: string | null
+    role?: string | null
   }
 }
 
