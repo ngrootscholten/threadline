@@ -8,9 +8,10 @@ export default function SettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null); // Current API key (plaintext)
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null); // Newly generated key
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -29,6 +30,7 @@ export default function SettingsPage() {
       const data = await response.json();
       if (response.ok) {
         setHasApiKey(data.hasApiKey);
+        setApiKey(data.apiKey); // Store plaintext key
         setCreatedAt(data.createdAt);
       }
     } catch (err) {
@@ -61,6 +63,7 @@ export default function SettingsPage() {
       }
 
       setNewApiKey(data.apiKey);
+      setApiKey(data.apiKey); // Also update current key
       setHasApiKey(true);
       setCreatedAt(data.createdAt);
       setGenerating(false);
@@ -79,16 +82,18 @@ export default function SettingsPage() {
   };
 
   const handleCopyApiKey = async () => {
-    if (newApiKey) {
-      await navigator.clipboard.writeText(newApiKey);
+    const keyToCopy = newApiKey || apiKey;
+    if (keyToCopy) {
+      await navigator.clipboard.writeText(keyToCopy);
       setCopied("apikey");
       setTimeout(() => setCopied(null), 2000);
     }
   };
 
   const handleCopyEnvFormat = async () => {
-    if (session?.user?.email && newApiKey) {
-      const envContent = `THREADLINE_ACCOUNT='${session.user.email}'\nTHREADLINE_API_KEY='${newApiKey}'`;
+    const keyToCopy = newApiKey || apiKey;
+    if (session?.user?.email && keyToCopy) {
+      const envContent = `THREADLINE_ACCOUNT='${session.user.email}'\nTHREADLINE_API_KEY='${keyToCopy}'`;
       await navigator.clipboard.writeText(envContent);
       setCopied("env");
       setTimeout(() => setCopied(null), 2000);
@@ -179,14 +184,14 @@ export default function SettingsPage() {
                 </button>
               </div>
               <div className="mb-4">
-                {newApiKey ? (
+                {(newApiKey || apiKey) ? (
                   <div className="flex items-start gap-2">
                     <div
                       onClick={handleCopyApiKey}
                       className="flex-1 bg-slate-950 border border-slate-700 rounded px-4 py-2 text-white font-mono text-sm break-all cursor-pointer hover:opacity-80 transition-opacity"
                       title="Click to copy"
                     >
-                      {newApiKey}
+                      {newApiKey || apiKey}
                     </div>
                     <button
                       onClick={handleCopyApiKey}
@@ -199,21 +204,17 @@ export default function SettingsPage() {
                       <span className="mt-1 text-green-400 text-xs">Copied!</span>
                     )}
                   </div>
-                ) : hasApiKey && createdAt ? (
-                  <p className="text-white font-mono text-sm">
-                    •••••••••••••••••••••••••••••••••
-                  </p>
                 ) : (
                   <p className="text-white font-mono text-sm">Not generated</p>
                 )}
                 {newApiKey ? (
-                  <p className="text-yellow-300 text-xs mt-1">
-                    ⚠️ Save this API key now - you won't be able to see it again!
+                  <p className="text-green-400 text-xs mt-1">
+                    ✓ New API key generated. You can view this key anytime in Settings.
                   </p>
                 ) : hasApiKey && createdAt ? (
                   <p className="text-slate-500 text-xs mt-1">
                     Generated on {new Date(createdAt).toLocaleDateString()} at {new Date(createdAt).toLocaleTimeString()}. 
-                    If you've lost your key, click "Regenerate" to create a new one.
+                    Share this key with your team members.
                   </p>
                 ) : (
                   <p className="text-slate-500 text-xs mt-1">
@@ -231,8 +232,8 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Convenience .env.local copy - only shown when newApiKey is available */}
-              {newApiKey && (
+              {/* Convenience .env.local copy - shown when API key is available */}
+              {(newApiKey || apiKey) && (
                 <div className="mt-4 pt-4 border-t border-slate-800">
                   <label className="block text-base font-semibold text-white mb-1">
                     Environment Variables
@@ -241,7 +242,7 @@ export default function SettingsPage() {
                     <textarea
                       readOnly
                       onClick={handleCopyEnvFormat}
-                      value={`THREADLINE_ACCOUNT='${session.user?.email}'\nTHREADLINE_API_KEY='${newApiKey}'`}
+                      value={`THREADLINE_ACCOUNT='${session.user?.email}'\nTHREADLINE_API_KEY='${newApiKey || apiKey}'`}
                       rows={2}
                       className="flex-1 bg-slate-950 border border-slate-700 rounded px-4 py-2 text-white font-mono text-sm resize-none cursor-pointer hover:opacity-80 transition-opacity"
                       title="Click to copy"

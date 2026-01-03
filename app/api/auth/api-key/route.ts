@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '../[...nextauth]/route'
 import { getPool } from '../../../lib/db'
-import { generateApiKey, hashApiKey } from '../../../lib/auth/api-key'
+import { generateApiKey } from '../../../lib/auth/api-key'
 
 /**
  * GET /api/auth/api-key
@@ -30,7 +30,7 @@ export async function GET() {
     const pool = getPool()
     // Get account API key info using account_id from session
     const result = await pool.query(
-      `SELECT api_key_created_at 
+      `SELECT api_key, api_key_created_at 
        FROM threadline_accounts
        WHERE id = $1`,
       [session.user.accountId]
@@ -44,7 +44,8 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      hasApiKey: !!result.rows[0].api_key_created_at,
+      hasApiKey: !!result.rows[0].api_key,
+      apiKey: result.rows[0].api_key || null, // Return plaintext key
       createdAt: result.rows[0].api_key_created_at || null
     })
   } catch (error: any) {
@@ -82,18 +83,17 @@ export async function POST() {
 
     // Generate new API key
     const apiKey = generateApiKey()
-    const apiKeyHash = hashApiKey(apiKey)
 
-    // Store hash and timestamp in account using account_id from session
+    // Store plaintext key and timestamp in account using account_id from session
     const pool = getPool()
     const updateResult = await pool.query(
       `UPDATE threadline_accounts 
-       SET api_key_hash = $1, 
+       SET api_key = $1, 
            api_key_created_at = NOW(),
            updated_at = NOW()
        WHERE id = $2
        RETURNING api_key_created_at`,
-      [apiKeyHash, session.user.accountId]
+      [apiKey, session.user.accountId]
     )
 
     if (updateResult.rows.length === 0) {
@@ -103,11 +103,11 @@ export async function POST() {
       )
     }
 
-    // Return plaintext key ONCE - this is the only time user will see it
+    // Return plaintext key (can be viewed again later)
     return NextResponse.json({
       apiKey,
       createdAt: updateResult.rows[0].api_key_created_at || new Date().toISOString(),
-      message: 'API key generated. Save this key immediately - you will not be able to see it again.'
+      message: 'API key generated. You can view this key again anytime in Settings.'
     })
   } catch (error: any) {
     console.error('Error generating API key:', error)

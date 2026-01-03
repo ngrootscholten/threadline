@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processThreadlines } from '../../lib/processors/expert';
 import { getPool } from '../../lib/db';
-import { hashApiKey } from '../../lib/auth/api-key';
+// Removed hashApiKey import - using plaintext comparison now
 import { storeCheck } from '../../lib/audit/store-check';
 import { logLLMCallMetrics, logCheckSummaryMetrics } from '../../lib/metrics/logger';
 import { ProcessThreadlineResult } from '../../lib/processors/single-expert';
@@ -203,15 +203,15 @@ export async function POST(req: NextRequest) {
     try {
       const pool = getPool();
       const accountResult = await pool.query(
-        `SELECT id, api_key_hash FROM threadline_accounts WHERE identifier = $1`,
+        `SELECT id, api_key FROM threadline_accounts WHERE identifier = $1`,
         [request.account]
       );
       
       if (accountResult.rows.length > 0) {
-        const storedHash = accountResult.rows[0].api_key_hash;
-        const providedHash = hashApiKey(request.apiKey);
+        const storedApiKey = accountResult.rows[0].api_key;
         
-        if (providedHash === storedHash) {
+        // Compare plaintext API keys
+        if (storedApiKey && request.apiKey === storedApiKey) {
           isAuthenticated = true;
           accountId = accountResult.rows[0].id;
           

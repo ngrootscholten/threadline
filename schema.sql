@@ -131,14 +131,14 @@ CREATE TABLE IF NOT EXISTS threadline_accounts (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   name TEXT NOT NULL,
   identifier TEXT UNIQUE NOT NULL, -- THREADLINE_ACCOUNT value (user's email)
-  api_key_hash TEXT NOT NULL, -- Hashed API key (SHA256)
+  api_key TEXT, -- Plaintext API key (stored for team sharing)
   api_key_created_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_threadline_accounts_identifier ON threadline_accounts(identifier);
-CREATE INDEX IF NOT EXISTS idx_threadline_accounts_api_key_hash ON threadline_accounts(api_key_hash);
+CREATE INDEX IF NOT EXISTS idx_threadline_accounts_api_key ON threadline_accounts(api_key);
 
 -- ============================================================================
 -- Audit and Analysis Tables for Threadline Checks

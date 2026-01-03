@@ -9,19 +9,3 @@ export function generateApiKey(): string {
   return randomBytes.toString('base64')
 }
 
-/**
- * Hash an API key using SHA256
- * This is what we store in the database
- */
-export function hashApiKey(apiKey: string): string {
-  return crypto.createHash('sha256').update(apiKey).digest('hex')
-}
-
-/**
- * Verify a provided API key against a stored hash
- */
-export function verifyApiKey(providedKey: string, storedHash: string): boolean {
-  const providedHash = hashApiKey(providedKey)
-  return providedHash === storedHash
-}
-
