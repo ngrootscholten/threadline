@@ -40,6 +40,12 @@ All paginated pages in the Threadline application must follow consistent paginat
 - **Required**: Use `useSearchParams` from `next/navigation` to read page from URL
 - **Required**: Use `router.push()` to update URL when page changes
 - **Pattern**: `router.push(`/endpoint?page=${newPage}`)`
+- **Exception - Local State Allowed**: Local state pagination is acceptable when:
+  - Filters only affect the paginated table/data (not other page sections like stats, timeline, etc.)
+  - Bookmarking/sharing filtered views is not a priority
+  - The page contains multiple independent sections where filters don't apply globally
+  - **Pattern**: Use `useState` for page state and call `setCurrentPage(newPage)` directly
+  - **Example**: Dashboard pages with stats/timeline sections where filters only affect the checks table
 
 ### Page Size
 - **Required**: Use fixed page size of 20 items per page
@@ -98,4 +104,6 @@ See `app/threadlines/page.tsx` and `app/api/threadlines/route.ts` for the canoni
 
 ## Reasoning
 Consistent pagination patterns ensure users have a predictable experience across all paginated pages. Using a shared component reduces code duplication and makes it easier to maintain and update pagination behavior. URL-based state allows users to bookmark specific pages and share links.
+
+**Exception Rationale**: On pages with multiple independent sections (e.g., dashboard with stats, timeline, and filtered table), local state pagination is acceptable when filters only affect the paginated table. This simplifies state management and avoids unnecessary URL complexity when bookmarking filtered views isn't needed. The default pattern (URL-based) should still be used unless these specific conditions are met.
 
