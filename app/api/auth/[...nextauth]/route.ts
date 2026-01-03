@@ -1,7 +1,7 @@
 import NextAuth, { type NextAuthConfig } from "next-auth"
 import PostgresAdapter from "@auth/pg-adapter"
 import Email from "next-auth/providers/email"
-import { getPool } from "../../../lib/db"
+import { getPool } from "@/app/lib/db"
 import { ServerClient } from "postmark"
 import type { User } from "next-auth"
 

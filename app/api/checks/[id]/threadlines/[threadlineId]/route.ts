@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '../../../../auth/[...nextauth]/route';
-import { getPool } from '../../../../../lib/db';
-import { extractFilesFromDiff } from '../../../../../lib/utils/diff-filter';
+import { auth } from '@/app/api/auth/[...nextauth]/route';
+import { getPool } from '@/app/lib/db';
+import { extractFilesFromDiff } from '@/app/lib/utils/diff-filter';
 
 /**
  * GET /api/checks/[id]/threadlines/[threadlineId]

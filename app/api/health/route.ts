@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { testConnection } from '../../lib/db';
+import { testConnection } from '@/app/lib/db';
 
 export async function GET() {
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';

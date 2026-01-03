@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processThreadlines } from '../../lib/processors/expert';
-import { getPool } from '../../lib/db';
+import { processThreadlines } from '@/app/lib/processors/expert';
+import { getPool } from '@/app/lib/db';
 // Removed hashApiKey import - using plaintext comparison now
-import { storeCheck } from '../../lib/audit/store-check';
+import { storeCheck } from '@/app/lib/audit/store-check';
 import { logLLMCallMetrics, logCheckSummaryMetrics } from '../../lib/metrics/logger';
 import { ProcessThreadlineResult } from '../../lib/processors/single-expert';
 

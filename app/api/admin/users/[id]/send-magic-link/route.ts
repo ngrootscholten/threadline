@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "../../../../auth/[...nextauth]/route"
-import { getPool } from "../../../../../lib/db"
-import { requireAccountAdminResponse } from "../../../../../lib/auth/admin"
-import { sendMagicLink } from "../../../../../lib/auth/send-magic-link"
+import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { getPool } from "@/app/lib/db"
+import { requireAccountAdminResponse } from "@/app/lib/auth/admin"
+import { sendMagicLink } from "@/app/lib/auth/send-magic-link"
 
 /**
  * POST /api/admin/users/[id]/send-magic-link

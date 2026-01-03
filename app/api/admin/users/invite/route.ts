@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "../../../auth/[...nextauth]/route"
-import { getPool } from "../../../../lib/db"
-import { requireAccountAdminResponse } from "../../../../lib/auth/admin"
-import { parseEmails } from "../../../../lib/utils/email-parser"
+import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { getPool } from "@/app/lib/db"
+import { requireAccountAdminResponse } from "@/app/lib/auth/admin"
+import { parseEmails } from "@/app/lib/utils/email-parser"
 import { sendMagicLink } from "../../../../lib/auth/send-magic-link"
 
 /**

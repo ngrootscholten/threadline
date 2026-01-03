@@ -1,10 +1,11 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Pagination } from "../components/pagination";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface Check {
   id: string;
@@ -51,6 +52,29 @@ interface FilterOptions {
   repositories: Array<{ value: string; label: string }>;
 }
 
+interface DashboardStatistics {
+  totalChecks: number;
+  totalLinesReviewed: number;
+  violationsCaught: number;
+  uniqueRepos: number;
+  complianceRate: number;
+  totalFilesReviewed: number;
+  checksThisWeek: number;
+  cicdChecks: number;
+  localChecks: number;
+}
+
+interface TimelineCheck {
+  id: string;
+  createdAt: string;  // ISO timestamp - client will bin by local timezone
+  outcome: string;
+  repoName: string | null;
+  environment: string | null;
+  threadlineIds: string[];  // Human-readable threadline names (not version-specific)
+}
+
+type GroupByType = 'outcome' | 'repo' | 'environment' | 'threadline';
+
 function DashboardPageContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -64,6 +88,11 @@ function DashboardPageContent() {
   const [summaryErrors, setSummaryErrors] = useState<Set<string>>(new Set());
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [authorDropdownOpen, setAuthorDropdownOpen] = useState(false);
+  const [statistics, setStatistics] = useState<DashboardStatistics | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [timelineChecks, setTimelineChecks] = useState<TimelineCheck[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupByType>('outcome');
 
   // Get current page and filters from URL, default to 1
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
@@ -122,14 +151,61 @@ function DashboardPageContent() {
     }
   }, [currentPage, authorFilter, environmentFilter, repoFilter]);
 
+  const fetchStatistics = useCallback(async () => {
+    try {
+      setLoadingStats(true);
+      const response = await fetch('/api/dashboard/stats', {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setStatistics(data.statistics);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard statistics:", err);
+    } finally {
+      setLoadingStats(false);
+    }
+  }, []);
+
+  const fetchTimeline = useCallback(async () => {
+    try {
+      setLoadingTimeline(true);
+      const response = await fetch('/api/dashboard/timeline', {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTimelineChecks(data.checks || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard timeline:", err);
+    } finally {
+      setLoadingTimeline(false);
+    }
+  }, []);
+
+  // Initial load: fetch stats, timeline, and filter options (only once on mount/status change)
   useEffect(() => {
     if (status === "authenticated") {
       fetchFilterOptions();
-      fetchChecks();
+      fetchStatistics();
+      fetchTimeline();
     } else if (status === "unauthenticated") {
       router.push("/auth/signin");
     }
-  }, [status, fetchChecks, fetchFilterOptions, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  // Fetch checks when filters or page change
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchChecks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, currentPage, authorFilter, environmentFilter, repoFilter]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && pagination && newPage <= pagination.totalPages) {
@@ -199,6 +275,133 @@ function DashboardPageContent() {
       });
     }
   }, [summaries, loadingSummaries]);
+
+  // Bin checks by LOCAL date (user's timezone) - memoized
+  // MUST be before early returns to maintain hook order
+  const binnedByDate = useMemo(() => {
+    if (!timelineChecks.length) return new Map<string, TimelineCheck[]>();
+    
+    const bins = new Map<string, TimelineCheck[]>();
+    timelineChecks.forEach(check => {
+      // Convert ISO timestamp to local date string (user's timezone)
+      const localDate = new Date(check.createdAt).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      });
+      
+      if (!bins.has(localDate)) {
+        bins.set(localDate, []);
+      }
+      bins.get(localDate)!.push(check);
+    });
+    
+    return bins;
+  }, [timelineChecks]);
+
+  // Process binned data for charts based on groupBy type
+  const chartData = useMemo(() => {
+    if (binnedByDate.size === 0) return { data: [], keys: [] as string[] };
+
+    // Get sorted dates
+    const sortedDates = Array.from(binnedByDate.keys()).sort((a, b) => 
+      new Date(a).getTime() - new Date(b).getTime()
+    );
+
+    // Format dates for display
+    const formatDate = (dateStr: string) => 
+      new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    if (groupBy === 'outcome') {
+      // Stacked bar by outcome
+      const data = sortedDates.map(dateStr => {
+        const checks = binnedByDate.get(dateStr)!;
+        const compliant = checks.filter(c => c.outcome === 'compliant').length;
+        const attention = checks.filter(c => c.outcome === 'attention').length;
+        const notRelevant = checks.filter(c => c.outcome === 'not_relevant').length;
+        
+        return {
+          date: formatDate(dateStr),
+          Compliant: compliant,
+          Attention: attention,
+          'Not Relevant': notRelevant
+        };
+      });
+      return { data, keys: ['Compliant', 'Attention', 'Not Relevant'] };
+    } else if (groupBy === 'repo') {
+      // Group by repository - stacked
+      const repoSet = new Set<string>();
+      
+      // First pass: collect all repos
+      binnedByDate.forEach(checks => {
+        checks.forEach(check => {
+          repoSet.add(check.repoName || 'Unknown');
+        });
+      });
+
+      const data = sortedDates.map(dateStr => {
+        const checks = binnedByDate.get(dateStr)!;
+        const row: Record<string, string | number> = { date: formatDate(dateStr) };
+        
+        repoSet.forEach(repo => {
+          row[repo] = checks.filter(c => (c.repoName || 'Unknown') === repo).length;
+        });
+        
+        return row;
+      });
+      return { data, keys: Array.from(repoSet) };
+    } else if (groupBy === 'environment') {
+      // Group by environment - stacked
+      const data = sortedDates.map(dateStr => {
+        const checks = binnedByDate.get(dateStr)!;
+        const github = checks.filter(c => c.environment === 'github').length;
+        const gitlab = checks.filter(c => c.environment === 'gitlab').length;
+        const vercel = checks.filter(c => c.environment === 'vercel').length;
+        const local = checks.filter(c => c.environment === 'local').length;
+        const other = checks.filter(c => c.environment && !['github', 'gitlab', 'vercel', 'local'].includes(c.environment)).length;
+        
+        return {
+          date: formatDate(dateStr),
+          GitHub: github,
+          GitLab: gitlab,
+          Vercel: vercel,
+          Local: local,
+          Other: other
+        };
+      });
+      return { data, keys: ['GitHub', 'GitLab', 'Vercel', 'Local', 'Other'] };
+    } else {
+      // Group by threadline (human-readable name) - limit to top 10 most active, stacked
+      const threadlineTotals = new Map<string, number>();
+      
+      // First pass: count total occurrences per threadline
+      binnedByDate.forEach(checks => {
+        checks.forEach(check => {
+          check.threadlineIds.forEach(threadlineId => {
+            threadlineTotals.set(threadlineId, (threadlineTotals.get(threadlineId) || 0) + 1);
+          });
+        });
+      });
+
+      // Get top 10 most active threadlines
+      const topThreadlines = Array.from(threadlineTotals.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([id]) => id);
+
+      const data = sortedDates.map(dateStr => {
+        const checks = binnedByDate.get(dateStr)!;
+        const row: Record<string, string | number> = { date: formatDate(dateStr) };
+        
+        topThreadlines.forEach(threadlineId => {
+          row[threadlineId] = checks.filter(c => c.threadlineIds.includes(threadlineId)).length;
+        });
+        
+        return row;
+      });
+      return { data, keys: topThreadlines };
+    }
+  }, [binnedByDate, groupBy]);
 
   if (status === "loading" || loading) {
     return (
@@ -323,6 +526,185 @@ function DashboardPageContent() {
       <section className="max-w-7xl mx-auto px-6 py-12">
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 md:p-6">
           <h1 className="text-4xl font-medium mb-6 text-white">Threadline Checks</h1>
+
+          {/* Statistics Panel */}
+          {statistics && (
+            <div className="mb-6">
+              <div className="bg-slate-950/50 p-6 rounded-lg border border-slate-800">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {/* Total Checks */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">Total Checks</p>
+                    <p className="text-2xl font-semibold text-white">{statistics.totalChecks.toLocaleString()}</p>
+                  </div>
+
+                  {/* Total Lines Reviewed */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">Lines Reviewed</p>
+                    <p className="text-2xl font-semibold text-white">{statistics.totalLinesReviewed.toLocaleString()}</p>
+                  </div>
+
+                  {/* Violations Caught */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">Violations Caught</p>
+                    <p className="text-2xl font-semibold text-yellow-400">{statistics.violationsCaught.toLocaleString()}</p>
+                  </div>
+
+                  {/* Unique Repos */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">Repositories</p>
+                    <p className="text-2xl font-semibold text-white">{statistics.uniqueRepos}</p>
+                  </div>
+
+                  {/* Compliance Rate */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">Compliance Rate</p>
+                    <p className="text-2xl font-semibold text-green-400">{statistics.complianceRate}%</p>
+                  </div>
+
+                  {/* Total Files Reviewed */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">Files Reviewed</p>
+                    <p className="text-2xl font-semibold text-white">{statistics.totalFilesReviewed.toLocaleString()}</p>
+                  </div>
+
+                  {/* Checks This Week */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">This Week</p>
+                    <p className="text-2xl font-semibold text-white">{statistics.checksThisWeek}</p>
+                  </div>
+
+                  {/* CI/CD vs Local */}
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-sm text-slate-400 mb-1">CI/CD vs Local</p>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-semibold text-purple-400">{statistics.cicdChecks} CI/CD</p>
+                      <p className="text-sm font-semibold text-blue-400">{statistics.localChecks} Local</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Timeline Chart */}
+          {timelineChecks.length > 0 && (
+            <div className="mb-6">
+              <div className="bg-slate-950/50 p-6 rounded-lg border border-slate-800">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-white">Check Activity (Last 90 Days)</h2>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setGroupBy('outcome')}
+                      className={`px-3 py-1 rounded text-sm transition-colors ${
+                        groupBy === 'outcome'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      By Outcome
+                    </button>
+                    <button
+                      onClick={() => setGroupBy('repo')}
+                      className={`px-3 py-1 rounded text-sm transition-colors ${
+                        groupBy === 'repo'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      By Repo
+                    </button>
+                    <button
+                      onClick={() => setGroupBy('environment')}
+                      className={`px-3 py-1 rounded text-sm transition-colors ${
+                        groupBy === 'environment'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      By Environment
+                    </button>
+                    <button
+                      onClick={() => setGroupBy('threadline')}
+                      className={`px-3 py-1 rounded text-sm transition-colors ${
+                        groupBy === 'threadline'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      By Threadline
+                    </button>
+                  </div>
+                </div>
+                {loadingTimeline ? (
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-slate-400">Loading chart...</p>
+                  </div>
+                ) : chartData.data.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData.data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#94a3b8"
+                        tick={{ fill: '#94a3b8', fontSize: 12 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <YAxis 
+                        stroke="#94a3b8"
+                        tick={{ fill: '#94a3b8', fontSize: 12 }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#1e293b', 
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          color: '#e2e8f0'
+                        }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ color: '#94a3b8' }}
+                      />
+                      {groupBy === 'outcome' ? (
+                        <>
+                          <Bar dataKey="Compliant" stackId="stack" fill="#22c55e" />
+                          <Bar dataKey="Attention" stackId="stack" fill="#eab308" />
+                          <Bar dataKey="Not Relevant" stackId="stack" fill="#64748b" />
+                        </>
+                      ) : groupBy === 'environment' ? (
+                        <>
+                          <Bar dataKey="GitHub" stackId="stack" fill="#64748b" />
+                          <Bar dataKey="GitLab" stackId="stack" fill="#f97316" />
+                          <Bar dataKey="Vercel" stackId="stack" fill="#a855f7" />
+                          <Bar dataKey="Local" stackId="stack" fill="#3b82f6" />
+                          <Bar dataKey="Other" stackId="stack" fill="#94a3b8" />
+                        </>
+                      ) : (
+                        // For repo and threadline, dynamically create stacked bars
+                        (() => {
+                          const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#f43f5e', '#14b8a6', '#a3e635'];
+                          return chartData.keys.map((key, index) => (
+                            <Bar 
+                              key={key} 
+                              dataKey={key} 
+                              stackId="stack"
+                              fill={colors[index % colors.length]}
+                            />
+                          ));
+                        })()
+                      )}
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-slate-400">No data available for the selected grouping</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Filters */}
           {filterOptions && (

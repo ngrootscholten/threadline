@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '../../../auth/[...nextauth]/route';
-import { getPool } from '../../../../lib/db';
+import { auth } from '@/app/api/auth/[...nextauth]/route';
+import { getPool } from '@/app/lib/db';
 
 /**
  * GET /api/threadlines/[id]/stats

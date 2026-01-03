@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '../[...nextauth]/route'
-import { getPool } from '../../../lib/db'
-import { generateApiKey } from '../../../lib/auth/api-key'
+import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { getPool } from '@/app/lib/db'
+import { generateApiKey } from '@/app/lib/auth/api-key'
 
 /**
  * GET /api/auth/api-key
