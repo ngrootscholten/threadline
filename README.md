@@ -41,7 +41,6 @@ Threadline helps teams maintain consistent code quality by:
 
 ## Learn More
 
-- [Account Entity Design](./docs/account-entity-design.md) - Database design for accounts and users
 - [Fix Detection Design](./docs/fix-detection-design.md) - Violation fix detection system design
 - [CI Environment Detection](./docs/ci-environment-detection.md) - How we detect CI/CD environments
 

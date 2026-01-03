@@ -126,6 +126,12 @@ function getNextAuthConfig(): NextAuthConfig {
         if (userResult.rows.length > 0) {
           const user = userResult.rows[0]
           
+          // Check if user is active - invalidate session if deactivated
+          if (user.is_active === false) {
+            // Return null to invalidate the session for deactivated users
+            return null
+          }
+          
           // Create account if user doesn't have one yet (first-time sign-in after email verification)
           // Only create account for verified users - skip unverified users to avoid unnecessary DB operations
           if (!user.account_id && user.email && user.emailVerified) {

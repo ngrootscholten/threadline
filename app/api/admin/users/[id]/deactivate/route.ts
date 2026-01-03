@@ -7,6 +7,7 @@ import { requireAccountAdminResponse } from "../../../../../lib/auth/admin"
  * POST /api/admin/users/[id]/deactivate
  * Deactivate a user (set is_active = false)
  * Only accessible to account admins
+ * Prevents deactivating yourself
  * Prevents deactivating the last account admin
  */
 export async function POST(
@@ -34,6 +35,15 @@ export async function POST(
     const resolvedParams = params instanceof Promise ? await params : params
     const userId = resolvedParams.id
     const pool = getPool()
+
+    // Prevent users from deactivating themselves
+    const currentUserId = (session!.user as any).id
+    if (currentUserId === userId) {
+      return NextResponse.json(
+        { error: "Cannot deactivate yourself" },
+        { status: 400 }
+      )
+    }
 
     // Verify user belongs to the same account
     const userCheck = await pool.query(
