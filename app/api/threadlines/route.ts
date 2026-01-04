@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10))); // Cap at 100, default 20
     const offset = (page - 1) * limit;
+    const includeOlderVersions = searchParams.get('includeOlderVersions') === 'true';
 
     const pool = getPool();
     
@@ -37,9 +38,24 @@ export async function GET(req: NextRequest) {
     
     const accountId = session.user.accountId;
     
+    // Build the base query - filter to latest versions only if includeOlderVersions is false
+    let versionFilter = '';
+    if (!includeOlderVersions) {
+      // Only include the latest version of each threadline (by identity_hash)
+      // A definition is "latest" if there's no other definition with the same identity_hash and a later created_at
+      versionFilter = `AND NOT EXISTS (
+        SELECT 1 FROM threadline_definitions td2
+        WHERE td2.identity_hash = td.identity_hash
+          AND td2.account_id = td.account_id
+          AND td2.created_at > td.created_at
+      )`;
+    }
+
     // Get total count first (before pagination)
     const countResult = await pool.query(
-      `SELECT COUNT(*) as total FROM threadline_definitions WHERE account_id = $1`,
+      `SELECT COUNT(*) as total 
+       FROM threadline_definitions td
+       WHERE td.account_id = $1 ${versionFilter}`,
       [accountId]
     );
     const total = parseInt(countResult.rows[0].total) || 0;
@@ -61,7 +77,7 @@ export async function GET(req: NextRequest) {
       FROM threadline_definitions td
       LEFT JOIN check_threadlines ct ON td.id = ct.threadline_definition_id AND ct.account_id = $1
       LEFT JOIN check_results cr ON ct.id = cr.check_threadline_id AND cr.account_id = $1
-      WHERE td.account_id = $1
+      WHERE td.account_id = $1 ${versionFilter}
       GROUP BY td.id, td.threadline_id, td.threadline_file_path, td.repo_name, td.created_at
       ORDER BY td.created_at DESC
       LIMIT $2 OFFSET $3`,

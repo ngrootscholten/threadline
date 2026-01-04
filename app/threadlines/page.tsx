@@ -34,6 +34,7 @@ function ThreadlinesPageContent() {
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [includeOlderVersions, setIncludeOlderVersions] = useState(false);
 
   // Get current page from URL, default to 1
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
@@ -41,7 +42,8 @@ function ThreadlinesPageContent() {
   const fetchThreadlines = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/threadlines?page=${currentPage}&limit=20`, {
+      const includeOlderParam = includeOlderVersions ? '&includeOlderVersions=true' : '';
+      const response = await fetch(`/api/threadlines?page=${currentPage}&limit=20${includeOlderParam}`, {
         credentials: "include",
       });
 
@@ -58,7 +60,7 @@ function ThreadlinesPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage]);
+  }, [currentPage, includeOlderVersions]);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -164,7 +166,37 @@ function ThreadlinesPageContent() {
     <main className="min-h-screen">
       <section className="max-w-7xl mx-auto px-6 py-12">
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 md:p-6">
-          <h1 className="text-4xl font-medium mb-3 text-white">Threadlines</h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-4xl font-medium text-white">Threadlines</h1>
+            <label className="flex items-center gap-2 cursor-pointer group/checkbox">
+              <input
+                type="checkbox"
+                checked={includeOlderVersions}
+                onChange={(e) => {
+                  setIncludeOlderVersions(e.target.checked);
+                  // Reset to page 1 when toggling versions filter
+                  if (currentPage !== 1) {
+                    router.push('/threadlines?page=1');
+                  }
+                }}
+                className="sr-only peer"
+              />
+              <div className="w-4 h-4 rounded border border-slate-500 bg-slate-800 peer-checked:bg-green-500/20 peer-checked:border-green-500/50 transition-colors duration-200 flex items-center justify-center">
+                {includeOlderVersions && (
+                  <svg 
+                    className="w-3.5 h-3.5 text-green-400" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm text-slate-300 group-hover/checkbox:text-slate-200 transition-colors">Include older versions</span>
+            </label>
+          </div>
 
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">

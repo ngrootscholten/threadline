@@ -34,6 +34,15 @@ function normalizeLineEndings(content: string): string {
 }
 
 /**
+ * Normalize file paths to use forward slashes for cross-platform consistency.
+ * Windows uses backslashes (\), Unix uses forward slashes (/).
+ * We normalize to forward slashes to ensure same path produces same hash regardless of platform.
+ */
+function normalizeFilePath(filePath: string): string {
+  return filePath.replace(/\\/g, '/');
+}
+
+/**
  * Generate a version-specific hash for a threadline definition.
  * This hash uniquely identifies an exact version of a threadline.
  * Same hash = exact same definition, can be reused.
@@ -41,7 +50,7 @@ function normalizeLineEndings(content: string): string {
 export function generateVersionHash(input: VersionHashInput): string {
   const data = JSON.stringify({
     threadlineId: input.threadlineId,
-    filePath: input.filePath,
+    filePath: normalizeFilePath(input.filePath), // Normalize path separators for cross-platform consistency
     patterns: input.patterns, // Not sorted - order from file is deterministic
     content: normalizeLineEndings(input.content), // Normalize line endings for cross-platform consistency
     version: input.version,
@@ -59,7 +68,7 @@ export function generateVersionHash(input: VersionHashInput): string {
 export function generateIdentityHash(input: IdentityHashInput): string {
   const data = JSON.stringify({
     threadlineId: input.threadlineId,
-    filePath: input.filePath,
+    filePath: normalizeFilePath(input.filePath), // Normalize path separators for cross-platform consistency
     repoName: input.repoName || '',
     accountId: input.accountId, // account_id UUID
   });
@@ -75,7 +84,7 @@ export function generateContextHash(input: ContextFileHashInput): string {
   const data = JSON.stringify({
     accountId: input.accountId, // account_id UUID
     repoName: input.repoName || '',
-    filePath: input.filePath,
+    filePath: normalizeFilePath(input.filePath), // Normalize path separators for cross-platform consistency
     content: normalizeLineEndings(input.content), // Normalize line endings for cross-platform consistency
   });
   return crypto.createHash('sha256').update(data).digest('hex');
