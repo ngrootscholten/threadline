@@ -42,6 +42,7 @@ export async function GET(
         td.threadline_version,
         td.threadline_patterns,
         td.threadline_content,
+        td.context_files,
         td.repo_name,
         td.predecessor_id,
         td.created_at
@@ -67,6 +68,7 @@ export async function GET(
         version: definition.threadline_version,
         patterns: definition.threadline_patterns,
         content: definition.threadline_content,
+        contextFiles: definition.context_files ?? [],
         repoName: definition.repo_name,
         predecessorId: definition.predecessor_id || null,
         createdAt: definition.created_at.toISOString()

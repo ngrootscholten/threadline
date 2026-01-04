@@ -5,10 +5,6 @@ patterns:
   - "app/**/*.tsx"
   - "app/**/*.ts"
   - "app/api/**/*.ts"
-context_files:
-  - "app/threadlines/page.tsx"
-  - "app/api/threadlines/route.ts"
-  - "app/components/pagination.tsx"
 ---
 
 # Pagination Pattern Standards
@@ -94,13 +90,26 @@ All paginated pages in the Threadline application must follow consistent paginat
   });
   ```
 
-## Reference Implementation
-See `app/threadlines/page.tsx` and `app/api/threadlines/route.ts` for the canonical example of pagination implementation.
+## Reference Implementation Summary
 
-## Context Files
-- `app/threadlines/page.tsx` - UI reference implementation
-- `app/api/threadlines/route.ts` - API reference implementation
-- `app/components/pagination.tsx` - Pagination component
+**UI (app/threadlines/page.tsx):**
+- Read page from URL: `const currentPage = parseInt(searchParams.get('page') || '1', 10)`
+- Fetch data: `fetch(\`/api/threadlines?page=${currentPage}&limit=20\`)`
+- Handle page change: `router.push(\`/threadlines?page=${newPage}\`)`
+- Render: `<Pagination page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} limit={pagination.limit} itemName="threadline" onPageChange={handlePageChange} />`
+
+**API (app/api/threadlines/route.ts):**
+- Parse params: `const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))` and `const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)))`
+- Calculate offset: `const offset = (page - 1) * limit`
+- Get total: `SELECT COUNT(*) as total FROM table WHERE account_id = $1`
+- Query with pagination: `SELECT ... LIMIT $2 OFFSET $3`
+- Return: `{ items: [...], pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } }`
+
+**Component (app/components/pagination.tsx):**
+- Props: `page`, `totalPages`, `total`, `limit`, `itemName`, `onPageChange`
+- Displays "Showing X-Y of Z items" text
+- Previous/Next buttons with disabled states
+- Page number buttons (current page highlighted in green) with ellipsis for large page counts
 
 ## Reasoning
 Consistent pagination patterns ensure users have a predictable experience across all paginated pages. Using a shared component reduces code duplication and makes it easier to maintain and update pagination behavior. URL-based state allows users to bookmark specific pages and share links.

@@ -186,6 +186,7 @@ CREATE TABLE IF NOT EXISTS threadline_definitions (
   threadline_version TEXT NOT NULL,
   threadline_patterns JSONB NOT NULL,
   threadline_content TEXT NOT NULL,
+  context_files JSONB DEFAULT '[]'::jsonb, -- Array of { path: string, lines: number } for context files
   repo_name TEXT, -- Repository where this threadline definition exists
   account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE, -- Account that owns this threadline definition
   predecessor_id TEXT REFERENCES threadline_definitions(id), -- Optional: points to earlier version

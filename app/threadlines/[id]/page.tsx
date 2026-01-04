@@ -15,6 +15,7 @@ interface ThreadlineDetail {
   version: string;
   patterns: string[];
   content: string;
+  contextFiles: Array<{ path: string; lines: number }>;
   repoName: string | null;
   predecessorId: string | null;
   createdAt: string;
@@ -361,6 +362,22 @@ export default function ThreadlineDetailPage() {
                   {threadline.patterns.map((pattern, idx) => (
                     <li key={idx} className="font-mono text-sm mb-1">
                       {pattern}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Context Files */}
+          {threadline.contextFiles && threadline.contextFiles.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-white mb-4">Context Files</h2>
+              <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                <ul className="list-disc list-inside text-slate-300">
+                  {threadline.contextFiles.map((file, idx) => (
+                    <li key={idx} className="font-mono text-sm mb-1">
+                      {file.path} <span className="text-slate-500">({file.lines} {file.lines === 1 ? 'line' : 'lines'})</span>
                     </li>
                   ))}
                 </ul>

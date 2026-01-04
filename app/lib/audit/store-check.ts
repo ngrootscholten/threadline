@@ -158,6 +158,14 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
           ? existingIdentityResult.rows[0].id 
           : null;
 
+        // Calculate context files array with line counts
+        const contextFiles = threadline.contextContent 
+          ? Object.entries(threadline.contextContent).map(([path, content]) => ({
+              path,
+              lines: content.split('\n').length
+            }))
+          : [];
+
         // Create new definition (either new version or completely new threadline)
         const definitionResult = await pool.query(
           `INSERT INTO threadline_definitions (
@@ -166,12 +174,13 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
             threadline_version,
             threadline_patterns,
             threadline_content,
+            context_files,
             repo_name,
             account_id,
             predecessor_id,
             version_hash,
             identity_hash
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           RETURNING id`,
           [
             threadline.id,
@@ -179,6 +188,7 @@ export async function storeCheck(params: StoreCheckParams): Promise<string> {
             threadline.version,
             JSON.stringify(threadline.patterns),
             threadline.content,
+            JSON.stringify(contextFiles),
             request.repoName || null,
             accountId,
             predecessorId,
