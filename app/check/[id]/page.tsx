@@ -7,6 +7,7 @@ import Link from "next/link";
 import "react-diff-view/style/index.css";
 import ReactMarkdown from "react-markdown";
 import { DiffViewer } from "../../components/DiffViewer";
+import { SplitDiffViewer } from "../../components/SplitDiffViewer";
 
 interface CheckSummary {
   id: string;
@@ -79,10 +80,15 @@ export default function CheckDetailPage() {
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fixes, setFixes] = useState<any[]>([]);
+  const [loadingFixes, setLoadingFixes] = useState(false);
+  const [detectingFixes, setDetectingFixes] = useState(false);
+  const [deletingFixes, setDeletingFixes] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated" && checkId) {
       fetchCheck();
+      fetchFixes();
     } else if (status === "unauthenticated") {
       router.push("/auth/signin");
     }
@@ -149,6 +155,85 @@ export default function CheckDetailPage() {
       fetchThreadlineDetail(threadlineId);
     }
     setExpandedThreadlines(newExpanded);
+  };
+
+  const fetchFixes = async () => {
+    try {
+      setLoadingFixes(true);
+      const response = await fetch(`/api/checks/${checkId}/fixes`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch fixes");
+      }
+
+      const data = await response.json();
+      setFixes(data.fixes || []);
+    } catch (err: any) {
+      console.error("Failed to fetch fixes:", err);
+    } finally {
+      setLoadingFixes(false);
+    }
+  };
+
+  const handleDetectFixes = async () => {
+    try {
+      setDetectingFixes(true);
+      const response = await fetch(`/api/checks/${checkId}/detect-fixes`, {
+        method: 'POST',
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to detect fixes");
+      }
+
+      const data = await response.json();
+      
+      // Auto-fetch fixes after successful detection
+      await fetchFixes();
+      
+      // Show success message (you could use a toast here)
+      alert(`Fix detection completed! ${data.fixesDetected} fixes detected.`);
+    } catch (err: any) {
+      console.error("Failed to detect fixes:", err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setDetectingFixes(false);
+    }
+  };
+
+  const handleDeleteFixes = async () => {
+    if (!confirm('Are you sure you want to delete all fixes for this check?')) {
+      return;
+    }
+
+    try {
+      setDeletingFixes(true);
+      const response = await fetch(`/api/checks/${checkId}/fixes`, {
+        method: 'DELETE',
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete fixes");
+      }
+
+      const data = await response.json();
+      
+      // Clear fixes from state
+      setFixes([]);
+      
+      alert(`Deleted ${data.deletedCount} fix(es).`);
+    } catch (err: any) {
+      console.error("Failed to delete fixes:", err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setDeletingFixes(false);
+    }
   };
 
   if (status === "loading" || loading) {
@@ -323,11 +408,33 @@ export default function CheckDetailPage() {
 
           {/* Threadlines List */}
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-white mb-4">Threadlines ({check.threadlines.length})</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-white">Threadlines ({check.threadlines.length})</h2>
+              <div className="flex gap-2">
+                {fixes.length > 0 && (
+                  <button
+                    onClick={handleDeleteFixes}
+                    disabled={deletingFixes}
+                    className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded hover:bg-red-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {deletingFixes ? 'Deleting...' : 'Delete Fixes'}
+                  </button>
+                )}
+                <button
+                  onClick={handleDetectFixes}
+                  disabled={detectingFixes}
+                  className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded hover:bg-green-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  {detectingFixes ? 'Detecting...' : 'Fix Analysis'}
+                </button>
+              </div>
+            </div>
             {check.threadlines.map((threadline) => {
               const isExpanded = expandedThreadlines.has(threadline.threadlineId);
               const detail = threadlineDetails.get(threadline.threadlineId);
               const isLoading = loadingDetails.has(threadline.threadlineId);
+              // Find fix for this threadline (match by threadline_id)
+              const fix = fixes.find(f => f.threadline_id === threadline.threadlineId);
 
               return (
                 <div
@@ -337,12 +444,17 @@ export default function CheckDetailPage() {
                   {/* Collapsed Summary */}
                   <div 
                     onClick={() => toggleThreadline(threadline.threadlineId)}
-                    className="w-full p-4 hover:bg-slate-800/50 transition-colors flex items-center justify-between cursor-pointer"
+                    className={`w-full p-4 hover:bg-slate-800/50 transition-colors flex items-center justify-between cursor-pointer ${fix ? 'border-l-4 border-l-blue-500' : ''}`}
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(threadline.status)}`}>
                         {threadline.status}
                       </span>
+                      {fix && (
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                          FIX
+                        </span>
+                      )}
                       <div className="flex-1">
                         <Link
                           href={`/threadlines/${threadline.threadlineDefinitionId}?fromCheck=${checkId}`}
@@ -376,6 +488,68 @@ export default function CheckDetailPage() {
                       )}
                       {!isLoading && detail && (
                         <div className="space-y-6">
+                          {/* Fix Information */}
+                          {fix && (
+                            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                              <h4 className="text-sm font-semibold text-blue-400 mb-3">Fix Detected</h4>
+                              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <p className="text-slate-400 mb-1">Fix Type</p>
+                                  <p className="text-white font-mono">{fix.fix_type}</p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-400 mb-1">Time Between Checks</p>
+                                  <p className="text-white">
+                                    {fix.time_between_checks_seconds < 60
+                                      ? `${fix.time_between_checks_seconds} seconds`
+                                      : fix.time_between_checks_seconds < 3600
+                                      ? `${Math.floor(fix.time_between_checks_seconds / 60)} minutes`
+                                      : `${Math.floor(fix.time_between_checks_seconds / 3600)} hours`}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-400 mb-1">Detection Method</p>
+                                  <p className="text-white">{fix.detection_method}</p>
+                                </div>
+                                {fix.previous_check_id && (
+                                  <div>
+                                    <p className="text-slate-400 mb-1">Previous Check</p>
+                                    <Link
+                                      href={`/check/${fix.previous_check_id}`}
+                                      className="text-blue-400 hover:text-blue-300 font-mono text-sm"
+                                    >
+                                      {fix.previous_check_id.substring(0, 8)}...
+                                    </Link>
+                                  </div>
+                                )}
+                              </div>
+                              {fix.explanation && (
+                                <div className="mt-4 pt-4 border-t border-blue-500/20">
+                                  <p className="text-slate-400 mb-2 text-sm font-semibold">Explanation</p>
+                                  <p className="text-slate-300 text-sm whitespace-pre-wrap">{fix.explanation}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Diff Comparison - Side by Side */}
+                          {fix && fix.previous_diff_filtered !== undefined && fix.current_diff_full !== undefined && (
+                            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                              <div className="px-4 py-2 bg-slate-800 border-b border-slate-700">
+                                <h4 className="text-sm font-semibold text-slate-300">Diff Comparison</h4>
+                                <p className="text-xs text-slate-500 mt-1">
+                                  Compare the previous check's violation files (left) with the current check's full diff (right)
+                                </p>
+                              </div>
+                              <SplitDiffViewer
+                                leftDiff={fix.previous_diff_filtered || ''}
+                                rightDiff={fix.current_diff_full || ''}
+                                leftTitle="Previous Check (Violation Files)"
+                                rightTitle="Current Check (All Files)"
+                              />
+                            </div>
+                          )}
+
                           {/* Result Details - Most Important */}
                           {detail.result ? (
                             <div>

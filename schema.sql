@@ -250,6 +250,49 @@ CREATE TABLE IF NOT EXISTS check_metrics (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS fixes (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  
+  -- Tenant isolation
+  account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE,
+  
+  -- Check references (N-1 and N)
+  previous_check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
+  current_check_id TEXT NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
+  
+  -- Check threadline references
+  previous_check_threadline_id TEXT NOT NULL REFERENCES check_threadlines(id) ON DELETE CASCADE,
+  current_check_threadline_id TEXT REFERENCES check_threadlines(id) ON DELETE SET NULL, -- NULL if threadline deleted
+  
+  -- Check result reference (the violation)
+  previous_check_result_id TEXT NOT NULL REFERENCES check_results(id) ON DELETE CASCADE,
+  
+  -- Threadline identity (for matching)
+  threadline_identity_hash TEXT NOT NULL, -- From threadline_definitions.identity_hash
+  threadline_id TEXT NOT NULL, -- Human-readable ID (convenience)
+  threadline_file_path TEXT NOT NULL, -- File path from violation check
+  
+  -- Violation context
+  violation_file_references JSONB NOT NULL, -- Files that had violations
+  violation_reasoning TEXT NOT NULL, -- LLM reasoning from violation
+  
+  -- Fix detection results
+  fix_type TEXT NOT NULL CHECK (fix_type IN (
+    'CODE_CHANGE',           -- Code was changed/removed
+    'THREADLINE_CHANGED',    -- Threadline definition modified
+    'THREADLINE_DELETED'     -- Threadline file deleted
+  )),
+  explanation TEXT, -- LLM explanation (NULL for naive algorithm)
+  evidence JSONB, -- Structured evidence (NULL for naive algorithm)
+  
+  -- Analytics
+  time_between_checks_seconds INTEGER NOT NULL,
+  detection_method TEXT NOT NULL DEFAULT 'naive', -- 'naive' or 'llm_analysis'
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Indexes for audit tables
 CREATE INDEX IF NOT EXISTS idx_checks_user_id ON checks(user_id);
 CREATE INDEX IF NOT EXISTS idx_checks_account_id ON checks(account_id);
@@ -298,6 +341,17 @@ CREATE INDEX IF NOT EXISTS idx_check_metrics_check_threadline_id ON check_metric
 CREATE INDEX IF NOT EXISTS idx_check_metrics_type ON check_metrics(metric_type);
 CREATE INDEX IF NOT EXISTS idx_check_metrics_recorded_at ON check_metrics(recorded_at DESC);
 
+-- Indexes for fixes table
+CREATE INDEX IF NOT EXISTS idx_fixes_account_id ON fixes(account_id);
+CREATE INDEX IF NOT EXISTS idx_fixes_previous_check_id ON fixes(previous_check_id);
+CREATE INDEX IF NOT EXISTS idx_fixes_current_check_id ON fixes(current_check_id);
+CREATE INDEX IF NOT EXISTS idx_fixes_previous_check_threadline_id ON fixes(previous_check_threadline_id);
+CREATE INDEX IF NOT EXISTS idx_fixes_current_check_threadline_id ON fixes(current_check_threadline_id);
+CREATE INDEX IF NOT EXISTS idx_fixes_threadline_identity_hash ON fixes(threadline_identity_hash);
+CREATE INDEX IF NOT EXISTS idx_fixes_fix_type ON fixes(fix_type);
+CREATE INDEX IF NOT EXISTS idx_fixes_account_id_created_at ON fixes(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_fixes_time_between_checks ON fixes(time_between_checks_seconds);
+
 -- Enable RLS on audit tables
 ALTER TABLE checks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE threadline_definitions ENABLE ROW LEVEL SECURITY;
@@ -306,5 +360,6 @@ ALTER TABLE check_threadlines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_diffs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE check_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fixes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE threadline_accounts ENABLE ROW LEVEL SECURITY;
 
