@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/api/auth/[...nextauth]/route';
 import { getPool } from '@/app/lib/db';
-import { filterDiffByFiles } from '@/app/lib/utils/diff-filter';
 
 /**
  * GET /api/checks/[id]/fixes
@@ -58,39 +57,8 @@ export async function GET(
       [accountId, checkId]
     );
 
-    // For each fix, fetch and process diffs
-    const fixesWithDiffs = await Promise.all(
-      fixesResult.rows.map(async (fix) => {
-        // Get previous check diff
-        const previousDiffResult = await pool.query(
-          `SELECT diff_content FROM check_diffs WHERE check_id = $1`,
-          [fix.previous_check_id]
-        );
-        const previousDiff = previousDiffResult.rows[0]?.diff_content || '';
-
-        // Get current check diff
-        const currentDiffResult = await pool.query(
-          `SELECT diff_content FROM check_diffs WHERE check_id = $1`,
-          [fix.current_check_id]
-        );
-        const currentDiff = currentDiffResult.rows[0]?.diff_content || '';
-
-        // Filter previous diff to violation files only
-        const violationFiles = Array.isArray(fix.violation_file_references)
-          ? fix.violation_file_references
-          : [];
-        const previousDiffFiltered = filterDiffByFiles(previousDiff, violationFiles);
-
-        return {
-          ...fix,
-          previous_diff_filtered: previousDiffFiltered,
-          current_diff_full: currentDiff
-        };
-      })
-    );
-
     return NextResponse.json({
-      fixes: fixesWithDiffs
+      fixes: fixesResult.rows
     });
 
   } catch (err: any) {

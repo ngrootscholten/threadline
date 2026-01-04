@@ -7,7 +7,6 @@ import Link from "next/link";
 import "react-diff-view/style/index.css";
 import ReactMarkdown from "react-markdown";
 import { DiffViewer } from "../../components/DiffViewer";
-import { SplitDiffViewer } from "../../components/SplitDiffViewer";
 
 interface CheckSummary {
   id: string;
@@ -84,6 +83,8 @@ export default function CheckDetailPage() {
   const [loadingFixes, setLoadingFixes] = useState(false);
   const [detectingFixes, setDetectingFixes] = useState(false);
   const [deletingFixes, setDeletingFixes] = useState(false);
+  const [fixDiffs, setFixDiffs] = useState<Map<string, string>>(new Map());
+  const [loadingFixDiffs, setLoadingFixDiffs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (status === "authenticated" && checkId) {
@@ -146,6 +147,36 @@ export default function CheckDetailPage() {
     }
   };
 
+  const fetchFixDiff = async (fixId: string) => {
+    // Don't fetch if already loaded or currently loading
+    if (fixDiffs.has(fixId) || loadingFixDiffs.has(fixId)) {
+      return;
+    }
+
+    setLoadingFixDiffs(prev => new Set(prev).add(fixId));
+
+    try {
+      const response = await fetch(`/api/fixes/${fixId}/diff`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch fix diff");
+      }
+
+      const data = await response.json();
+      setFixDiffs(prev => new Map(prev).set(fixId, data.diff || ''));
+    } catch (err: any) {
+      console.error(`Failed to fetch diff for fix ${fixId}:`, err);
+    } finally {
+      setLoadingFixDiffs(prev => {
+        const next = new Set(prev);
+        next.delete(fixId);
+        return next;
+      });
+    }
+  };
+
   const toggleThreadline = (threadlineId: string) => {
     const newExpanded = new Set(expandedThreadlines);
     if (newExpanded.has(threadlineId)) {
@@ -153,6 +184,12 @@ export default function CheckDetailPage() {
     } else {
       newExpanded.add(threadlineId);
       fetchThreadlineDetail(threadlineId);
+      
+      // If there's a fix for this threadline, fetch its diff
+      const fix = fixes.find(f => f.threadline_id === threadlineId);
+      if (fix) {
+        fetchFixDiff(fix.id);
+      }
     }
     setExpandedThreadlines(newExpanded);
   };
@@ -170,6 +207,14 @@ export default function CheckDetailPage() {
 
       const data = await response.json();
       setFixes(data.fixes || []);
+      
+      // If any threadlines are already expanded and have fixes, fetch their diffs
+      data.fixes?.forEach((fix: any) => {
+        const threadlineId = fix.threadline_id;
+        if (expandedThreadlines.has(threadlineId)) {
+          fetchFixDiff(fix.id);
+        }
+      });
     } catch (err: any) {
       console.error("Failed to fetch fixes:", err);
     } finally {
@@ -532,21 +577,29 @@ export default function CheckDetailPage() {
                             </div>
                           )}
 
-                          {/* Diff Comparison - Side by Side */}
-                          {fix && fix.previous_diff_filtered !== undefined && fix.current_diff_full !== undefined && (
+                          {/* Combined Diff - Shows Introduction and Removal */}
+                          {fix && (
                             <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
                               <div className="px-4 py-2 bg-slate-800 border-b border-slate-700">
-                                <h4 className="text-sm font-semibold text-slate-300">Diff Comparison</h4>
+                                <h4 className="text-sm font-semibold text-slate-300">Fix Diff</h4>
                                 <p className="text-xs text-slate-500 mt-1">
-                                  Compare the previous check's violation files (left) with the current check's full diff (right)
+                                  Shows the introduction of the problem (previous check) and its removal (current check)
                                 </p>
                               </div>
-                              <SplitDiffViewer
-                                leftDiff={fix.previous_diff_filtered || ''}
-                                rightDiff={fix.current_diff_full || ''}
-                                leftTitle="Previous Check (Violation Files)"
-                                rightTitle="Current Check (All Files)"
-                              />
+                              {loadingFixDiffs.has(fix.id) ? (
+                                <div className="p-8 text-center">
+                                  <p className="text-slate-400">Loading diff...</p>
+                                </div>
+                              ) : fixDiffs.has(fix.id) && fixDiffs.get(fix.id) ? (
+                                <DiffViewer
+                                  diff={fixDiffs.get(fix.id)!}
+                                  title="Combined Diff"
+                                />
+                              ) : (
+                                <div className="p-4 text-slate-500 text-sm text-center">
+                                  No diff available
+                                </div>
+                              )}
                             </div>
                           )}
 
