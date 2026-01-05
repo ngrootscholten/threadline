@@ -38,7 +38,8 @@ export async function GET(req: NextRequest) {
       compliantResult,
       filesReviewedResult,
       checksThisWeekResult,
-      environmentBreakdownResult
+      environmentBreakdownResult,
+      fixesResult
     ] = await Promise.all([
       // Total checks
       pool.query(
@@ -97,6 +98,13 @@ export async function GET(req: NextRequest) {
         FROM checks
         WHERE account_id = $1`,
         [accountId]
+      ),
+      // Total fixes
+      pool.query(
+        `SELECT COUNT(*) as total
+        FROM fixes
+        WHERE account_id = $1`,
+        [accountId]
       )
     ]);
 
@@ -111,12 +119,16 @@ export async function GET(req: NextRequest) {
     const checksThisWeek = parseInt(checksThisWeekResult.rows[0].total) || 0;
     const cicdChecks = parseInt(environmentBreakdownResult.rows[0].cicd) || 0;
     const localChecks = parseInt(environmentBreakdownResult.rows[0].local) || 0;
+    const fixedIssues = parseInt(fixesResult.rows[0].total) || 0;
 
     // Calculate compliance rate
     const totalResults = violationsCaught + compliantChecks;
     const complianceRate = totalResults > 0 
       ? Math.round((compliantChecks / totalResults) * 100) 
       : 0;
+
+    // Calculate open issues (violations that haven't been fixed)
+    const openIssues = Math.max(0, violationsCaught - fixedIssues);
 
     return NextResponse.json({
       statistics: {
@@ -128,7 +140,9 @@ export async function GET(req: NextRequest) {
         totalFilesReviewed,
         checksThisWeek,
         cicdChecks,
-        localChecks
+        localChecks,
+        openIssues,
+        fixedIssues
       }
     });
   } catch (error: unknown) {

@@ -491,9 +491,7 @@ export default function CheckDetailPage() {
                     onClick={() => toggleThreadline(threadline.threadlineId)}
                     className={`w-full p-4 hover:bg-slate-800/50 transition-colors flex items-center justify-between cursor-pointer ${
                     fix 
-                      ? fix.fix_direction === 'detected'
-                        ? 'border-l-4 border-l-blue-500'
-                        : 'border-l-4 border-l-green-500'
+                      ? 'border-l-4 border-l-blue-500'
                       : ''
                   }`}
                   >
@@ -502,11 +500,7 @@ export default function CheckDetailPage() {
                         {threadline.status}
                       </span>
                       {fix && (
-                        <span className={`px-2 py-1 rounded text-xs font-medium border ${
-                          fix.fix_direction === 'detected'
-                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                            : 'bg-green-500/20 text-green-400 border-green-500/30'
-                        }`}>
+                        <span className="px-2 py-1 rounded text-xs font-medium border bg-blue-500/20 text-blue-400 border-blue-500/30">
                           {fix.fix_direction === 'detected' ? 'FIX DETECTED' : 'FIXED LATER'}
                         </span>
                       )}
@@ -545,16 +539,8 @@ export default function CheckDetailPage() {
                         <div className="space-y-6">
                           {/* Fix Information */}
                           {fix && (
-                            <div className={`rounded-lg p-4 border ${
-                              fix.fix_direction === 'detected'
-                                ? 'bg-blue-500/10 border-blue-500/30'
-                                : 'bg-green-500/10 border-green-500/30'
-                            }`}>
-                              <h4 className={`text-sm font-semibold mb-3 ${
-                                fix.fix_direction === 'detected'
-                                  ? 'text-blue-400'
-                                  : 'text-green-400'
-                              }`}>
+                            <div className="rounded-lg p-4 border bg-blue-500/10 border-blue-500/30">
+                              <h4 className="text-sm font-semibold mb-3 text-blue-400">
                                 {fix.fix_direction === 'detected' ? 'Fix Detected' : 'Fixed in Later Check'}
                               </h4>
                               <div className="grid md:grid-cols-2 gap-4 text-sm">
@@ -592,7 +578,7 @@ export default function CheckDetailPage() {
                                     <p className="text-slate-400 mb-1">Fixed in Check</p>
                                     <Link
                                       href={`/check/${fix.current_check_id}`}
-                                      className="text-green-400 hover:text-green-300 font-mono text-sm"
+                                      className="text-blue-400 hover:text-blue-300 font-mono text-sm"
                                     >
                                       {fix.current_check_id.substring(0, 8)}...
                                     </Link>
@@ -600,11 +586,7 @@ export default function CheckDetailPage() {
                                 )}
                               </div>
                               {fix.explanation && (
-                                <div className={`mt-4 pt-4 border-t ${
-                                  fix.fix_direction === 'detected'
-                                    ? 'border-blue-500/20'
-                                    : 'border-green-500/20'
-                                }`}>
+                                <div className="mt-4 pt-4 border-t border-blue-500/20">
                                   <p className="text-slate-400 mb-2 text-sm font-semibold">Explanation</p>
                                   <p className="text-slate-300 text-sm whitespace-pre-wrap">{fix.explanation}</p>
                                 </div>

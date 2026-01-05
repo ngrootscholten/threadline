@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pagination } from "../pagination";
 
+interface ResultDetail {
+  threadline_id: string;
+  status: 'compliant' | 'attention' | 'not_relevant';
+  fixId: string | null;
+}
+
 interface Check {
   id: string;
   repoName: string | null;
@@ -22,17 +28,14 @@ interface Check {
   };
   filesChangedCount: number;
   threadlinesCount: number;
-  results: {
-    compliant: number;
-    attention: number;
-    notRelevant: number;
-  };
+  results: ResultDetail[];
   createdAt: string;
 }
 
 interface CheckSummary {
   compliant: string[];
   attention: string[];
+  attentionFixed: string[];
   notRelevant: string[];
   total: number;
 }
@@ -210,46 +213,63 @@ export function ChecksTable({ checks, pagination, onPageChange }: ChecksTablePro
             {checks.map((check) => {
               const summary = summaries[check.id];
               const hasError = summaryErrors.has(check.id);
+              // Calculate counts from results array
+              const compliantCount = check.results.filter(r => r.status === 'compliant').length;
+              const attentionCount = check.results.filter(r => r.status === 'attention' && !r.fixId).length;
+              const attentionFixedCount = check.results.filter(r => r.status === 'attention' && r.fixId).length;
+              const notRelevantCount = check.results.filter(r => r.status === 'not_relevant').length;
+
               const buildTooltip = (): string => {
                 if (hasError) {
                   return 'Error retrieving check summary';
                 }
 
                 if (!summary) {
-                  // Summary not loaded yet - show basic counts
+                  // Summary not loaded yet - show basic counts from results array
                   const parts: string[] = [];
                   parts.push('Results Breakdown:');
                   parts.push('');
-                  if (check.results.compliant > 0) {
-                    parts.push(`✓ ${check.results.compliant} compliant`);
+                  if (attentionCount > 0) {
+                    parts.push(`⚠ ${attentionCount} attention`);
                   }
-                  if (check.results.attention > 0) {
-                    parts.push(`⚠ ${check.results.attention} attention`);
+                  if (attentionFixedCount > 0) {
+                    parts.push(`✓ ${attentionFixedCount} attention (fixed)`);
                   }
-                  if (check.results.notRelevant > 0) {
-                    parts.push(`— ${check.results.notRelevant} not relevant`);
+                  if (compliantCount > 0) {
+                    parts.push(`✓ ${compliantCount} compliant`);
+                  }
+                  if (notRelevantCount > 0) {
+                    parts.push(`— ${notRelevantCount} not relevant`);
                   }
                   parts.push('');
                   parts.push(`Total: ${check.threadlinesCount} threadline${check.threadlinesCount !== 1 ? 's' : ''}`);
                   return parts.join('\n');
                 }
 
-                // Full tooltip with threadline IDs
+                // Full tooltip with threadline IDs from API
                 const parts: string[] = [];
                 parts.push('Results Breakdown:');
                 parts.push('');
 
-                if (summary.compliant.length > 0) {
-                  parts.push(`✓ ${summary.compliant.length} compliant:`);
-                  summary.compliant.forEach(id => {
+                if (summary.attention.length > 0) {
+                  parts.push(`⚠ ${summary.attention.length} attention:`);
+                  summary.attention.forEach(id => {
                     parts.push(`  • ${id}`);
                   });
                   parts.push('');
                 }
 
-                if (summary.attention.length > 0) {
-                  parts.push(`⚠ ${summary.attention.length} attention:`);
-                  summary.attention.forEach(id => {
+                if (summary.attentionFixed.length > 0) {
+                  parts.push(`✓ ${summary.attentionFixed.length} attention (fixed):`);
+                  summary.attentionFixed.forEach(id => {
+                    parts.push(`  • ${id}`);
+                  });
+                  parts.push('');
+                }
+
+                if (summary.compliant.length > 0) {
+                  parts.push(`✓ ${summary.compliant.length} compliant:`);
+                  summary.compliant.forEach(id => {
                     parts.push(`  • ${id}`);
                   });
                   parts.push('');
@@ -346,18 +366,32 @@ export function ChecksTable({ checks, pagination, onPageChange }: ChecksTablePro
                       onMouseEnter={() => fetchSummary(check.id)}
                     >
                       <div className="flex items-center gap-2 flex-wrap">
-                        {check.results.compliant > 0 && (
-                          <span className="text-green-400">{check.results.compliant} ✓</span>
+                        {attentionCount > 0 && (
+                          <span className="text-yellow-400">{attentionCount} ⚠</span>
                         )}
-                        {check.results.attention > 0 && (
-                          <span className="text-yellow-400">{check.results.attention} ⚠</span>
+                        {attentionFixedCount > 0 && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="text-slate-300">{attentionFixedCount}</span>
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-semibold" title="Fixed">
+                              ✓
+                            </span>
+                          </span>
                         )}
-                        {check.results.notRelevant > 0 && (
-                          <span className="text-slate-500">{check.results.notRelevant} —</span>
+                        {compliantCount > 0 && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="text-slate-300">{compliantCount}</span>
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-xs font-semibold">
+                              ✓
+                            </span>
+                          </span>
                         )}
-                        {check.results.compliant === 0 && 
-                         check.results.attention === 0 && 
-                         check.results.notRelevant === 0 && (
+                        {notRelevantCount > 0 && (
+                          <span className="text-slate-500">{notRelevantCount} —</span>
+                        )}
+                        {attentionCount === 0 && 
+                         attentionFixedCount === 0 &&
+                         compliantCount === 0 && 
+                         notRelevantCount === 0 && (
                           <span className="text-slate-500">—</span>
                         )}
                       </div>

@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
     const whereClause = whereConditions.join(' AND ');
 
     // Get total count and paginated results in one query
+    // Include detailed results with fixId information
     const result = await pool.query(
       `SELECT 
         c.id,
@@ -96,13 +97,21 @@ export async function GET(req: NextRequest) {
         c.files_changed_count,
         c.threadlines_count,
         c.created_at,
-        COUNT(cr.id) FILTER (WHERE cr.status = 'compliant') as compliant_count,
-        COUNT(cr.id) FILTER (WHERE cr.status = 'attention') as attention_count,
-        COUNT(cr.id) FILTER (WHERE cr.status = 'not_relevant') as not_relevant_count,
-        COUNT(*) OVER() as total_count
+        COUNT(*) OVER() as total_count,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'threadline_id', ct.threadline_id,
+              'status', cr.status,
+              'fixId', f.id
+            ) ORDER BY ct.threadline_id
+          ) FILTER (WHERE cr.id IS NOT NULL),
+          '[]'::json
+        ) as result_details
       FROM checks c
       LEFT JOIN check_threadlines ct ON c.id = ct.check_id
       LEFT JOIN check_results cr ON ct.id = cr.check_threadline_id
+      LEFT JOIN fixes f ON f.previous_check_result_id = cr.id
       WHERE ${whereClause}
       GROUP BY c.id
       ORDER BY c.created_at DESC
@@ -131,11 +140,7 @@ export async function GET(req: NextRequest) {
         },
         filesChangedCount: row.files_changed_count,
         threadlinesCount: row.threadlines_count,
-        results: {
-          compliant: parseInt(row.compliant_count) || 0,
-          attention: parseInt(row.attention_count) || 0,
-          notRelevant: parseInt(row.not_relevant_count) || 0
-        },
+        results: row.result_details || [],
         createdAt: row.created_at.toISOString()
       })),
       pagination: {

@@ -48,31 +48,39 @@ export async function GET(
       );
     }
 
-    // Get lightweight threadline results - only threadline_id and status
+    // Get lightweight threadline results with fix information
     const result = await pool.query(
       `SELECT 
         ct.threadline_id,
-        cr.status
+        cr.status,
+        f.id as fix_id
       FROM check_threadlines ct
       LEFT JOIN check_results cr ON ct.id = cr.check_threadline_id
+      LEFT JOIN fixes f ON f.previous_check_result_id = cr.id
       WHERE ct.check_id = $1
       ORDER BY ct.threadline_id`,
       [checkId]
     );
 
-    // Group threadline IDs by status
+    // Group threadline IDs by status, separating fixed attention from unfixed attention
     const compliant: string[] = [];
     const attention: string[] = [];
+    const attentionFixed: string[] = [];
     const notRelevant: string[] = [];
 
     result.rows.forEach(row => {
       const threadlineId = row.threadline_id;
       const status = row.status || 'not_relevant';
+      const fixId = row.fix_id;
       
       if (status === 'compliant') {
         compliant.push(threadlineId);
       } else if (status === 'attention') {
-        attention.push(threadlineId);
+        if (fixId) {
+          attentionFixed.push(threadlineId);
+        } else {
+          attention.push(threadlineId);
+        }
       } else {
         notRelevant.push(threadlineId);
       }
@@ -81,6 +89,7 @@ export async function GET(
     return NextResponse.json({
       compliant,
       attention,
+      attentionFixed,
       notRelevant,
       total: result.rows.length
     });

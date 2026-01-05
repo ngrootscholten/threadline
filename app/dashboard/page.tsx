@@ -8,6 +8,12 @@ import { ChecksTable } from "../components/dashboard/checks-table";
 import { ChecksFilters } from "../components/dashboard/checks-filters";
 import { StatisticsPanel } from "../components/dashboard/statistics-panel";
 
+interface ResultDetail {
+  threadline_id: string;
+  status: 'compliant' | 'attention' | 'not_relevant';
+  fixId: string | null;
+}
+
 interface Check {
   id: string;
   repoName: string | null;
@@ -25,11 +31,7 @@ interface Check {
   };
   filesChangedCount: number;
   threadlinesCount: number;
-  results: {
-    compliant: number;
-    attention: number;
-    notRelevant: number;
-  };
+  results: ResultDetail[];
   createdAt: string;
 }
 
@@ -56,6 +58,8 @@ interface DashboardStatistics {
   checksThisWeek: number;
   cicdChecks: number;
   localChecks: number;
+  openIssues: number;
+  fixedIssues: number;
 }
 
 function DashboardPageContent() {
