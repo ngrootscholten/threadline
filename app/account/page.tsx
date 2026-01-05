@@ -32,7 +32,7 @@ export default function AccountPage() {
   if (status === "loading") {
     return (
       <main className="min-h-screen">
-        <section className="max-w-4xl mx-auto px-6 py-12">
+        <section className="max-w-7xl mx-auto px-6 py-12">
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 md:p-6">
             <p className="text-slate-400">Loading...</p>
           </div>
@@ -130,7 +130,7 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-screen">
-      <section className="max-w-4xl mx-auto px-6 py-12">
+      <section className="max-w-7xl mx-auto px-6 py-12">
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 md:p-6">
           <h1 className="text-4xl font-medium mb-3 text-white">Your Profile</h1>
           
