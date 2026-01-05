@@ -16,6 +16,17 @@ export function getPool(): Pool {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     });
+
+    // Set timezone on new connections to avoid pg_timezone_names lookups
+    // This can significantly reduce connection overhead (the pg_timezone_names query
+    // was consuming 28.4% of total DB time with 0% cache hit rate)
+    pool.on('connect', async (client) => {
+      try {
+        await client.query("SET timezone = 'UTC'");
+      } catch (error) {
+        console.error('Failed to set timezone on connection:', error);
+      }
+    });
   }
   
   return pool;
