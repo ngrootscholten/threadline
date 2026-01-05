@@ -15,6 +15,7 @@ interface Threadline {
     totalChecks: number;
     compliant: number;
     attention: number;
+    attentionFixed: number;
     notRelevant: number;
   };
 }
@@ -275,11 +276,24 @@ function ThreadlinesPageContent() {
                             return (
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  {results.compliant > 0 && (
-                                    <span className="text-green-400">{results.compliant} ✓</span>
-                                  )}
                                   {results.attention > 0 && (
                                     <span className="text-yellow-400">{results.attention} ⚠</span>
+                                  )}
+                                  {results.attentionFixed > 0 && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="text-slate-300">{results.attentionFixed}</span>
+                                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-semibold" title="Fixed">
+                                        ✓
+                                      </span>
+                                    </span>
+                                  )}
+                                  {results.compliant > 0 && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="text-slate-300">{results.compliant}</span>
+                                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-xs font-semibold">
+                                        ✓
+                                      </span>
+                                    </span>
                                   )}
                                   {results.notRelevant > 0 && (
                                     <span className="text-slate-500">{results.notRelevant} —</span>
