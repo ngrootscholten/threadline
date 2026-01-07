@@ -8,6 +8,7 @@ export function Navigation() {
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated" && session;
 
+  
   return (
     <nav className="border-b border-slate-800/50 bg-[#0a0a0a]/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4">
