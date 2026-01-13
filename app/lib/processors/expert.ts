@@ -43,12 +43,16 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
   const llmModel = `${baseModel} ${serviceTier}`;
   
   // Create promises with timeout
-  const promises = threadlines.map(threadline => 
-    Promise.race([
-      processThreadline(threadline, diff, files, apiKey),
-      new Promise<ProcessThreadlineResult>((resolve) => 
-        setTimeout(() => {
+  const promises = threadlines.map(threadline => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    let resolved = false;
+    
+    const timeoutPromise = new Promise<ProcessThreadlineResult>((resolve) => {
+      timeoutId = setTimeout(() => {
+        // Only log and resolve if we haven't already resolved
+        if (!resolved) {
           console.error(`[ERROR] Request timed out after ${EXPERT_TIMEOUT / 1000}s for threadline: ${threadline.id}`);
+          resolved = true;
           resolve({
             expertId: threadline.id,
             status: 'error',
@@ -63,10 +67,21 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
             filesInFilteredDiff: [],
             actualModel: undefined
           });
-        }, EXPERT_TIMEOUT)
-      )
-    ])
-  );
+        }
+      }, EXPERT_TIMEOUT);
+    });
+    
+    const actualPromise = processThreadline(threadline, diff, files, apiKey).then(result => {
+      // Mark as resolved and clear timeout if it hasn't fired yet
+      resolved = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      return result;
+    });
+    
+    return Promise.race([actualPromise, timeoutPromise]);
+  });
 
   // Wait for all (some may timeout)
   const results = await Promise.allSettled(promises);
