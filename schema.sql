@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS check_results (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   check_threadline_id TEXT NOT NULL REFERENCES check_threadlines(id) ON DELETE CASCADE,
   account_id TEXT NOT NULL REFERENCES threadline_accounts(id) ON DELETE CASCADE, -- Tenant key for multi-tenancy
-  status TEXT NOT NULL CHECK (status IN ('compliant', 'attention', 'not_relevant')),
+  status TEXT NOT NULL CHECK (status IN ('compliant', 'attention', 'not_relevant', 'error')),
   reasoning TEXT,
   file_references JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()

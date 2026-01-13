@@ -67,6 +67,7 @@ export async function GET(
     const attention: string[] = [];
     const attentionFixed: string[] = [];
     const notRelevant: string[] = [];
+    const errors: string[] = [];
 
     result.rows.forEach(row => {
       const threadlineId = row.threadline_id;
@@ -81,6 +82,8 @@ export async function GET(
         } else {
           attention.push(threadlineId);
         }
+      } else if (status === 'error') {
+        errors.push(threadlineId);
       } else {
         notRelevant.push(threadlineId);
       }
@@ -91,6 +94,7 @@ export async function GET(
       attention,
       attentionFixed,
       notRelevant,
+      errors,
       total: result.rows.length
     });
   } catch (error: unknown) {

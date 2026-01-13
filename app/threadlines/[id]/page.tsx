@@ -45,7 +45,7 @@ interface ThreadlineCheck {
   commitSha: string | null;
   commitMessage: string | null;
   environment: string | null;
-  status: 'compliant' | 'attention' | 'not_relevant';
+  status: 'compliant' | 'attention' | 'not_relevant' | 'error';
   result: {
     status: string;
     reasoning: string | null;

@@ -7,7 +7,7 @@ import { Pagination } from "../pagination";
 
 interface ResultDetail {
   threadline_id: string;
-  status: 'compliant' | 'attention' | 'not_relevant';
+  status: 'compliant' | 'attention' | 'not_relevant' | 'error';
   fixId: string | null;
 }
 
@@ -37,6 +37,7 @@ interface CheckSummary {
   attention: string[];
   attentionFixed: string[];
   notRelevant: string[];
+  errors: string[];
   total: number;
 }
 
@@ -218,6 +219,7 @@ export function ChecksTable({ checks, pagination, onPageChange }: ChecksTablePro
               const attentionCount = check.results.filter(r => r.status === 'attention' && !r.fixId).length;
               const attentionFixedCount = check.results.filter(r => r.status === 'attention' && r.fixId).length;
               const notRelevantCount = check.results.filter(r => r.status === 'not_relevant').length;
+              const errorCount = check.results.filter(r => r.status === 'error').length;
 
               const buildTooltip = (): string => {
                 if (hasError) {
@@ -240,6 +242,9 @@ export function ChecksTable({ checks, pagination, onPageChange }: ChecksTablePro
                   }
                   if (notRelevantCount > 0) {
                     parts.push(`— ${notRelevantCount} not relevant`);
+                  }
+                  if (errorCount > 0) {
+                    parts.push(`❌ ${errorCount} error${errorCount !== 1 ? 's' : ''}`);
                   }
                   parts.push('');
                   parts.push(`Total: ${check.threadlinesCount} threadline${check.threadlinesCount !== 1 ? 's' : ''}`);
@@ -278,6 +283,14 @@ export function ChecksTable({ checks, pagination, onPageChange }: ChecksTablePro
                 if (summary.notRelevant.length > 0) {
                   parts.push(`— ${summary.notRelevant.length} not relevant:`);
                   summary.notRelevant.forEach(id => {
+                    parts.push(`  • ${id}`);
+                  });
+                  parts.push('');
+                }
+
+                if (summary.errors && summary.errors.length > 0) {
+                  parts.push(`❌ ${summary.errors.length} error${summary.errors.length !== 1 ? 's' : ''}:`);
+                  summary.errors.forEach(id => {
                     parts.push(`  • ${id}`);
                   });
                   parts.push('');

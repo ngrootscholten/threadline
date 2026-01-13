@@ -100,6 +100,7 @@ export async function GET(
     const passed = threadlines.filter(t => t.status === 'compliant').length;
     const failed = threadlines.filter(t => t.status === 'attention').length;
     const notRelevant = threadlines.filter(t => t.status === 'not_relevant').length;
+    const errors = threadlines.filter(t => t.status === 'error').length;
 
     return NextResponse.json({
       check: {
@@ -126,7 +127,8 @@ export async function GET(
           passed,
           failed,
           notRelevant,
-          allPassed: failed === 0
+          errors,
+          allPassed: failed === 0 && errors === 0
         },
         threadlines
       }

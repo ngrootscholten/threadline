@@ -11,16 +11,15 @@ context_files: []
 
 # No Silent Fallbacks or Guesses
 
-Our code should be fact-based and show errors clearly. We should never silently fail or make assumptions without clear evidence.  This Threadline is mainly intended to detect a common behaviour of AI Agents.
+Our code should show errors clearly. We should never silently fail or fallback to a different strategy. This Threadline is mainly intended to detect a common behaviour of AI Agents.
 
 ## Guidelines
 
 
 1. **No silent fallbacks** - Don't catch errors and silently continue or return null without logging. Multiple silent fallbacks make code harder to maintain because you lose track of which code paths were intended or expected to work.
    - **Note**: Error propagation (where errors bubble up and fail loudly) is acceptable and NOT a silent fallback. Silent fallbacks specifically refer to trying alternative methods when one fails (e.g., try method A, if it fails silently try method B).
-2. **No guesses** - Don't assume values or make up defaults without clear evidence
-3. **Show errors clearly** - When something fails, log the error with context so it can be diagnosed
-4. **Fact-based decisions** - Base decisions on actual data, not assumptions
+2. **Show errors clearly** - When something fails, log the error with context so it can be diagnosed.
+3. We're ok with having sensible, documented defaults for environment variables: users may not wish to override those.  
 
 ## Examples
 
@@ -34,11 +33,6 @@ function getRepoName(): string | null {
   }
 }
 
-// ❌ Bad - Guessing without evidence
-function getRepoName(): string | null {
-  // Assumes GITHUB_REPOSITORY exists without checking
-  return process.env.GITHUB_REPOSITORY || null;
-}
 
 // ✅ Good - Shows error clearly
 function getRepoName(): string | null {

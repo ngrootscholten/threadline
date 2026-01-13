@@ -32,7 +32,15 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
   const { threadlines, diff, files, apiKey } = request;
   
   // Determine LLM model (same for all threadlines in this check)
-  const llmModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  if (!process.env.OPENAI_MODEL) {
+    console.log('[CONFIG] OPENAI_MODEL not set, using default: gpt-5.2');
+  }
+  const baseModel = process.env.OPENAI_MODEL || 'gpt-5.2';
+  if (!process.env.OPENAI_SERVICE_TIER) {
+    console.log('[CONFIG] OPENAI_SERVICE_TIER not set, using default: flex');
+  }
+  const serviceTier = (process.env.OPENAI_SERVICE_TIER || 'flex').toLowerCase();
+  const llmModel = `${baseModel} ${serviceTier}`;
   
   // Create promises with timeout
   const promises = threadlines.map(threadline => 
@@ -40,14 +48,20 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
       processThreadline(threadline, diff, files, apiKey),
       new Promise<ProcessThreadlineResult>((resolve) => 
         setTimeout(() => {
+          console.error(`[ERROR] Request timed out after ${EXPERT_TIMEOUT / 1000}s for threadline: ${threadline.id}`);
           resolve({
             expertId: threadline.id,
-            status: 'not_relevant',
-            reasoning: 'Request timed out after 40s',
+            status: 'error',
+            reasoning: `Error: Request timed out after ${EXPERT_TIMEOUT / 1000}s`,
+            error: {
+              message: `Request timed out after ${EXPERT_TIMEOUT / 1000}s`,
+              type: 'timeout'
+            },
             fileReferences: [],
             relevantFiles: [],
             filteredDiff: '',
-            filesInFilteredDiff: []
+            filesInFilteredDiff: [],
+            actualModel: undefined
           });
         }, EXPERT_TIMEOUT)
       )
@@ -62,6 +76,7 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
   let completed = 0;
   let timedOut = 0;
   let errors = 0;
+  let actualModelFromResponse: string | undefined;
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
@@ -69,25 +84,51 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
 
     if (result.status === 'fulfilled') {
       const expertResult = result.value;
-      // Check if it timed out (has timeout message)
-      if (expertResult.reasoning?.includes('timed out')) {
-        timedOut++;
+      // Check status directly - errors and timeouts are now 'error' status
+      if (expertResult.status === 'error') {
+        // Check if it's a timeout (has error.type === 'timeout')
+        if ('error' in expertResult && expertResult.error?.type === 'timeout') {
+          timedOut++;
+        } else {
+          errors++;
+        }
       } else {
         completed++;
       }
       expertResults.push(expertResult);
+      
+      // Capture actual model from first successful result (all threadlines use same model)
+      if (!actualModelFromResponse && 'actualModel' in expertResult && expertResult.actualModel) {
+        actualModelFromResponse = expertResult.actualModel;
+      }
     } else {
       errors++;
       expertResults.push({
         expertId: threadline.id,
-        status: 'not_relevant',
+        status: 'error',
         reasoning: `Error: ${result.reason?.message || 'Unknown error'}`,
+        error: {
+          message: result.reason?.message || 'Unknown error',
+          rawResponse: result.reason
+        },
         fileReferences: [],
         relevantFiles: [],
         filteredDiff: '',
         filesInFilteredDiff: []
       });
     }
+  }
+
+  // Use actual model from OpenAI response, append service tier
+  let modelToStore: string | undefined;
+  if (actualModelFromResponse) {
+    modelToStore = `${actualModelFromResponse} ${serviceTier}`;
+  } else {
+    // All calls failed - log prominently and preserve requested model for debugging
+    console.error(`[ERROR] No successful LLM responses received. Requested model: ${llmModel}`);
+    console.error(`[ERROR] Completed: ${completed}, Timed out: ${timedOut}, Errors: ${errors}`);
+    // Store requested model so we can debug what was attempted
+    modelToStore = `${llmModel} (no successful responses)`;
   }
 
   // Return all results - CLI will handle filtering/display
@@ -98,7 +139,7 @@ export async function processThreadlines(request: ProcessThreadlinesRequest): Pr
       completed,
       timedOut,
       errors,
-      llmModel
+      llmModel: modelToStore
     }
   };
 }

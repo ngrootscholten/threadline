@@ -17,6 +17,7 @@ export interface ProcessThreadlineResult extends ExpertResult {
   relevantFiles: string[]; // Files that matched threadline patterns
   filteredDiff: string; // The actual diff sent to LLM (filtered to only relevant files)
   filesInFilteredDiff: string[]; // Files actually present in the filtered diff sent to LLM
+  actualModel?: string; // Actual model returned by OpenAI (may differ from requested)
   llmCallMetrics?: {
     startedAt: string; // ISO 8601
     finishedAt: string; // ISO 8601
@@ -86,7 +87,14 @@ export async function processThreadline(
   
   console.log(`   📝 Processing ${threadline.id}: ${relevantFiles.length} relevant files, ${filesInFilteredDiff.length} files in filtered diff`);
 
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  if (!process.env.OPENAI_MODEL) {
+    console.log('[CONFIG] OPENAI_MODEL not set, using default: gpt-5.2');
+  }
+  const model = process.env.OPENAI_MODEL || 'gpt-5.2';
+  if (!process.env.OPENAI_SERVICE_TIER) {
+    console.log('[CONFIG] OPENAI_SERVICE_TIER not set, using default: flex');
+  }
+  const serviceTier = (process.env.OPENAI_SERVICE_TIER || 'flex').toLowerCase();
   console.log(`   🤖 Calling LLM (${model}) for ${threadline.id}...`);
   
   // Capture timing for LLM call
@@ -98,7 +106,7 @@ export async function processThreadline(
   let llmCallErrorMessage: string | null = null;
 
   try {
-    const response = await openai.chat.completions.create({
+    const requestParams: any = {
       model,
       messages: [
         {
@@ -112,7 +120,17 @@ export async function processThreadline(
       ],
       response_format: { type: 'json_object' },
       temperature: 0.1
-    });
+    };
+
+    // Add service_tier if not 'standard'
+    if (serviceTier !== 'standard') {
+      requestParams.service_tier = serviceTier;
+    }
+
+    const response = await openai.chat.completions.create(requestParams);
+
+    // Capture the actual model returned by OpenAI (may differ from requested)
+    const actualModel = response.model;
 
     llmCallFinishedAt = new Date().toISOString();
     llmCallResponseTimeMs = new Date(llmCallFinishedAt).getTime() - new Date(llmCallStartedAt).getTime();
@@ -130,12 +148,10 @@ export async function processThreadline(
     if (!content) {
       throw new Error('No response from LLM');
     }
-
-    console.log(`   📄 Raw LLM response: ${content.substring(0, 200)}...`);
     
     const parsed = JSON.parse(content);
     
-    console.log(`   ✅ Parsed: status=${parsed.status}, reasoning=${parsed.reasoning?.substring(0, 100)}...`);
+    console.log(`   ✅ ${threadline.id}: ${parsed.status}`);
     
     // Extract file references - rely entirely on LLM to provide them
     let fileReferences: string[] = [];
@@ -168,6 +184,7 @@ export async function processThreadline(
       relevantFiles: relevantFiles,
       filteredDiff: filteredDiff,
       filesInFilteredDiff: filesInFilteredDiff,
+      actualModel: actualModel,
       llmCallMetrics: {
         startedAt: llmCallStartedAt,
         finishedAt: llmCallFinishedAt,
@@ -184,12 +201,34 @@ export async function processThreadline(
     llmCallStatus = 'error';
     llmCallErrorMessage = error?.message || 'Unknown error';
     
+    // Log full error for debugging
+    console.error(`   ❌ OpenAI error:`, JSON.stringify(error, null, 2));
+    
+    // Extract OpenAI error details from the error object
+    const openAIError = error?.error || {};
+    const rawErrorResponse = {
+      status: error?.status,
+      headers: error?.headers,
+      request_id: error?.request_id,
+      error: error?.error,
+      code: error?.code,
+      param: error?.param,
+      type: error?.type
+    };
+    
     // Return error result with metrics instead of throwing
     // This allows metrics to be captured even when LLM call fails
+    // Use 'error' status - errors are errors, not attention items
     return {
       expertId: threadline.id,
-      status: 'not_relevant',
+      status: 'error',
       reasoning: `Error: ${error?.message || 'Unknown error'}`,
+      error: {
+        message: error?.message || 'Unknown error',
+        type: openAIError?.type || error?.type,
+        code: openAIError?.code || error?.code,
+        rawResponse: rawErrorResponse
+      },
       fileReferences: [],
       relevantFiles: relevantFiles,
       filteredDiff: filteredDiff,

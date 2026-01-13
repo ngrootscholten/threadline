@@ -10,7 +10,7 @@ import { StatisticsPanel } from "../components/dashboard/statistics-panel";
 
 interface ResultDetail {
   threadline_id: string;
-  status: 'compliant' | 'attention' | 'not_relevant';
+  status: 'compliant' | 'attention' | 'not_relevant' | 'error';
   fixId: string | null;
 }
 
